@@ -113,6 +113,11 @@ function handleMovimiento(e) {
     updates[`cuentas/${or.id}/saldo`] = sOr - m; updates[`cuentas/${des.id}/saldo`] = des.tipo === 'debito' ? sDes + m : sDes - m;
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key, oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     updates[`transacciones/${id}`] = { tipo: 'movimiento', subtipo: currentMovMode, monto: m, desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, origenId: or.id, destinoId: des.id, fecha: oldFecha };
+    // NUEVO: Si el movimiento es un pago a tarjeta, marcar la cuenta como pagada automáticamente
+    if (currentMovMode === 'pago') {
+        const mesActual = new Date().getMonth();
+        updates[`cuentas/${des.id}/mesPagado`] = mesActual;
+    }
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('movOrigen').disabled = false; document.getElementById('movDestino').disabled = false; document.getElementById('movTitle').innerText = "Nuevo Movimiento"; alert("Movimiento procesado."); });
 }
 
@@ -151,11 +156,21 @@ function renderAll() {
     let tengo = 0, debo = 0, gT = 0, iT = 0; const hoy = new Date(); const diaHoy = hoy.getDate(); const mesAct = hoy.getMonth(); let hDeb = "", hCre = "", hMae = "";
     state.cuentas.forEach(c => {
         let aviso = "";
-        if(c.diaPago) { const ya = c.mesPagado === mesAct; const vence = c.diaPago - diaHoy; if(ya && vence >= -5) aviso = `<br><small style="color:var(--success)">✓ Pagado</small> <span onclick="db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}/mesPagado').remove()" style="font-size:8px; cursor:pointer;">(Quitar)</span>`; else aviso = `<br><small style="color:${vence < 0 || vence <= 3 ? 'var(--danger)' : 'var(--muted)'}">${vence < 0 ? 'Atrasado' : 'Faltan: '+vence+'d'}</small><br><button class="btn-check-pago" onclick="db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}/mesPagado').set(${mesAct})">Pagar</button>`; }
-        const item = `<div class="bank-item"><div class="bank-info"><img src="${c.icon}" class="bank-icon"><div class="bank-details"><b>${c.nombre}</b>${aviso}</div></div><b>$${c.saldo.toLocaleString()}</b></div>`;
-        if(c.tipo==='debito'){ tengo+=c.saldo; hDeb+=item; } else { debo+=c.saldo; hCre+=item; }
-        hMae += `<div class="bank-item"><div class="bank-info"><img src="${c.icon}" class="bank-icon"><b>${c.nombre}</b></div><div style="text-align:right"><b>$${c.saldo.toLocaleString()}</b><br><span class="action-link" style="color:var(--success)" onclick="sumarInteres('${c.id}')">+ Interés</span><span class="action-link" onclick="const d=prompt('Dominio:'); if(d) db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}/icon').set('https://www.google.com/s2/favicons?domain='+d+'&sz=64')">Logo</span><span class="action-link danger" onclick="if(confirm('¿Borrar cuenta?')) db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}').remove()">Borrar</span></div></div>`;
-    });
+        if(c.diaPago) { 
+            const yaPagado = c.mesPagado === mesAct; 
+            const vence = c.diaPago - diaHoy; 
+            
+            if (yaPagado) {
+                // Si ya se registró el pago este mes, SIEMPRE muestra "Pagado", no importa qué día sea.
+                aviso = `<br><small style="color:var(--success); font-weight:bold;">✓ Pagado este mes</small> <span onclick="db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}/mesPagado').remove()" style="font-size:8px; cursor:pointer; color:var(--muted);">(Deshacer)</span>`; 
+            } else {
+                // Si NO se ha pagado, calcula si está atrasado, es hoy, o faltan días
+                let textoDias = vence < 0 ? `⚠️ Atrasado` : (vence === 0 ? '¡Paga HOY!' : `Faltan: ${vence}d`);
+                let colorTexto = vence <= 3 ? 'var(--danger)' : 'var(--muted)';
+                
+                aviso = `<br><small style="color:${colorTexto}; font-weight:bold;">${textoDias}</small><br><button class="btn-check-pago" style="${vence <= 0 ? 'background:var(--danger)' : ''}" onclick="db.ref('Usuarios/${auth.currentUser.uid}/cuentas/${c.id}/mesPagado').set(${mesAct})">Marcar Pagado</button>`; 
+            }
+        }
     document.getElementById('widgetDebitos').innerHTML = hDeb || "<small>Vacío</small>"; document.getElementById('widgetCreditos').innerHTML = hCre || "<small>Vacío</small>"; document.getElementById('listaMaestraCuentas').innerHTML = hMae;
     document.getElementById('valTengo').innerText = `$${tengo.toLocaleString()}`; document.getElementById('valDebo').innerText = `$${debo.toLocaleString()}`; document.getElementById('valPatrimonio').innerText = `$${(tengo - debo).toLocaleString()}`;
     gT = state.transacciones.filter(t => t.tipo==='gasto').reduce((a, b) => a + b.monto, 0); iT = state.transacciones.filter(t => t.tipo==='ingreso').reduce((a, b) => a + b.monto, 0);
