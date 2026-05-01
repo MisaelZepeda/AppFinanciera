@@ -34,7 +34,19 @@ body {
 
 /* AUTH SCREENS */
 .auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.auth-card { background: var(--surface); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
+
+/* REPARACIÓN DEL CENTRADO */
+.auth-card { 
+    background: var(--surface); 
+    padding: 30px; 
+    border-radius: 20px; 
+    width: 100%; 
+    max-width: 400px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+    text-align: center; 
+    margin: 10vh auto; 
+}
+
 .auth-card h2 { margin-bottom: 25px; color: var(--primary); }
 .auth-link { color: var(--primary); font-size: 14px; margin-top: 15px; cursor: pointer; text-decoration: underline; }
 
@@ -156,6 +168,13 @@ input:focus, select:focus {
 @keyframes slideInTab { 
     from { opacity: 0; transform: translateX(30px); } 
     to { opacity: 1; transform: translateX(0); } 
+}
+
+/* --- ANIMACIÓN PARA EL ICONO --- */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; border-top: 1px solid var(--line); }

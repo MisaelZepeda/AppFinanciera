@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard Pro</title>
+    <!-- Aquí agregamos el favicon de tu nuevo logo -->
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
 </head>
@@ -11,6 +13,8 @@
     <!-- PANTALLA DE CARGA CON CÁPSULA Y FRASE -->
     <div id="loader" style="display: none;">
         <div class="loading-wrapper">
+            <!-- Icono integrado en la carga -->
+            <img src="logo.svg" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 10px; animation: pulse 2s infinite;">
             <div class="loading-text">LOADING...</div>
             <div class="progress-capsule">
                 <div class="progress-segment"></div>
@@ -26,6 +30,8 @@
     <!-- PANTALLA DE AUTENTICACIÓN -->
     <div id="loginScreen" class="auth-container" style="display: none;">
         <div class="auth-card">
+            <!-- Icono integrado en la tarjeta de login -->
+            <img src="logo.svg" alt="Dashboard Pro Logo" style="width: 70px; height: 70px; margin-bottom: 15px;">
             <h2>Dashboard Pro</h2>
             
             <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">

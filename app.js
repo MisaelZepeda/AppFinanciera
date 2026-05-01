@@ -22,7 +22,7 @@ let state = {
 };
 
 let chartInstance = null;
-let chartPatrimonioInstance = null; // NUEVA VARIABLE PARA EL GRAFICO PREMIUM
+let chartPatrimonioInstance = null;
 let currentEditId = null;
 let currentCuentaEditId = null; 
 let currentMovMode = 'pago';
@@ -173,7 +173,7 @@ function mostrarFraseDiaria() {
         "El dinero es una herramienta. Te llevará a donde desees, pero no te reemplazará como conductor.", 
         "La educación financiera es el activo más poderoso que puedes tener.", 
         "Tu futuro financiero depende de lo que hagas hoy, no mañana.", 
-        "No trabajes por el dinero, haz que el dinero trabajaje para ti.", 
+        "No trabajes por el dinero, haz que el dinero trabaje para ti.", 
         "El conocimiento es la mejor inversión que puedes hacer." 
     ];
     const hoy = new Date(); 
@@ -197,7 +197,7 @@ setTimeout(() => {
     mostrarFraseDiaria();
 }, 500);
 
-// 4. ESTADO EN TIEMPO REAL CON PANTALLA DE CARGA
+// 4. ESTADO EN TIEMPO REAL CON PANTALLA DE CARGA Y CENTRADO CORREGIDO
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('loginScreen').style.display = 'none'; 
@@ -232,7 +232,8 @@ auth.onAuthStateChanged(user => {
             }, 3000);
         });
     } else {
-        document.getElementById('loginScreen').style.display = 'block'; 
+        // AQUÍ ESTÁ EL ARREGLO DEL CENTRADO (FLEX en lugar de BLOCK)
+        document.getElementById('loginScreen').style.display = 'flex'; 
         document.getElementById('appDashboard').style.display = 'none';
         
         if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; 
@@ -265,10 +266,9 @@ function closeDropdowns() {
 }
 
 function cambiarTab(id, btn) {
-    // Para reiniciar la animación del slide, forzamos un reflow
     document.querySelectorAll('.tab-content').forEach(t => {
         t.classList.remove('active');
-        void t.offsetWidth; // TRUCO: Forza reflow para que la animación CSS se reinicie
+        void t.offsetWidth; // TRUCO: Forza reflow para reiniciar la animación
     }); 
     
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -493,21 +493,19 @@ function getBankColor(banco) {
     return 'linear-gradient(135deg, #475569, #1e293b)';
 }
 
-// NUEVA FUNCION: Renderiza el Gráfico de Ola de Patrimonio Premium
+// Gráfico Premium de Ola
 function renderPatrimonioChart(patrimonioActual) {
     const ctxCanvas = document.getElementById('chartPatrimonio');
     if (!ctxCanvas) return;
     
     const ctx = ctxCanvas.getContext('2d');
     
-    // Gradiente debajo de la línea
     let gradient = ctx.createLinearGradient(0, 0, 0, 150);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
 
     if (chartPatrimonioInstance) chartPatrimonioInstance.destroy();
 
-    // Creamos un arreglo de datos simulado para generar la curva bonita hacia el patrimonio actual
     let dataCurve = [];
     if (patrimonioActual > 0) {
         dataCurve = [patrimonioActual*0.7, patrimonioActual*0.75, patrimonioActual*0.72, patrimonioActual*0.8, patrimonioActual*0.85, patrimonioActual*0.9, patrimonioActual];
@@ -527,8 +525,8 @@ function renderPatrimonioChart(patrimonioActual) {
                 borderWidth: 2,
                 backgroundColor: gradient,
                 fill: true,
-                tension: 0.4, // Hace la curva suave
-                pointRadius: 0, // Oculta los puntos
+                tension: 0.4,
+                pointRadius: 0,
                 pointHoverRadius: 0
             }]
         },
@@ -651,7 +649,6 @@ function renderAll() {
     const patrimonio = tengo - debo;
     document.getElementById('valPatrimonio').innerText = `$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
     
-    // Renderiza la ola visual de Chart.js
     renderPatrimonioChart(patrimonio);
     
     const prefijoMes = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -771,7 +768,7 @@ function handleGuardarPerfil(e) {
     db.ref(`Usuarios/${auth.currentUser.uid}/perfil`).set({ nombre: document.getElementById('perfNombre').value, foto: state.currentBase64 || document.getElementById('perfDisplayFoto').src, color: state.selectedColor }).then(() => { alert("Perfil actualizado"); cambiarTab('resumen'); }); 
 }
 
-// 10. MÓDULO: PRESUPUESTOS Y EXPORTACIÓN PDF
+// 10. MÓDULO: PRESUPUESTOS Y EXPORTACIÓN PDF CON LOGO NUEVO
 let chartPresupuestoInstance = null;
 
 function handleGuardarPresupuesto(e) { e.preventDefault(); const presupuestos = { Comida: parseFloat(document.getElementById('presComida').value) || 0, Servicios: parseFloat(document.getElementById('presServicios').value) || 0, Transporte: parseFloat(document.getElementById('presTransporte').value) || 0, Vivienda: parseFloat(document.getElementById('presVivienda').value) || 0, Ocio: parseFloat(document.getElementById('presOcio').value) || 0, Otros: parseFloat(document.getElementById('presOtros').value) || 0 }; db.ref(`Usuarios/${auth.currentUser.uid}/presupuestos`).set(presupuestos).then(() => alert("¡Presupuesto actualizado!")); }
@@ -817,6 +814,20 @@ async function generarPDFMes() {
     if(document.getElementById('loader')) document.getElementById('loader').style.display = 'flex';
     try {
         const { jsPDF } = window.jspdf; const doc = new jsPDF({ putOnlyUsedFonts: true, orientation: "portrait" });
+        
+        // CONVERSIÓN DEL LOGO SVG A PNG PARA EL PDF
+        const logoDataUrl = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100; canvas.height = 100;
+                canvas.getContext('2d').drawImage(img, 0, 0, 100, 100);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => resolve(null);
+            img.src = 'logo.svg';
+        });
+
         const limpiarTexto = (txt) => txt ? txt.replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim() : '';
         const selectorMes = document.getElementById('mesReporte') ? document.getElementById('mesReporte').value : null;
         let fechaObjetivo = new Date(); if (selectorMes) { const partes = selectorMes.split('-'); fechaObjetivo = new Date(partes[0], partes[1] - 1, 10); }
@@ -872,7 +883,13 @@ async function generarPDFMes() {
         for(let i = 1; i <= pageCount; i++) {
             doc.setPage(i); doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.rect(0, 0, 210, 40, 'F'); 
             doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.text("ESTADO DE CUENTA MÓVIL", 45, 15); doc.setFontSize(20); doc.setFont(undefined, 'bold'); doc.text(userName.toUpperCase(), 45, 23); doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.text(`Período reportado: ${nombreMes} ${year}`, 45, 30);
-            if (i === 1) { try { if(userPhotoBase64 && userPhotoBase64.startsWith('data:image')) { doc.addImage(userPhotoBase64, 'JPEG', 15, 8, 24, 24, 'perfil', 'FAST'); } } catch(e) {} }
+            
+            // INCORPORACIÓN DEL LOGO EN EL PDF
+            if (logoDataUrl) {
+                doc.addImage(logoDataUrl, 'PNG', 15, 10, 20, 20);
+            }
+
+            if (i === 1) { try { if(userPhotoBase64 && userPhotoBase64.startsWith('data:image')) { doc.addImage(userPhotoBase64, 'JPEG', 170, 8, 24, 24, 'perfil', 'FAST'); } } catch(e) {} }
             const pageHeight = doc.internal.pageSize.height; doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.rect(0, pageHeight - 15, 210, 15, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.text(`Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 15, pageHeight - 6); doc.text(`Página ${i} de ${pageCount}`, 195, pageHeight - 6, { align: 'right' });
         }
         
