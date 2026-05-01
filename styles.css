@@ -4,7 +4,7 @@
     --text: #1e293b;
     --muted: #64748b;
     --line: #e2e8f0;
-    --primary: #3b82f6; 
+    --primary: #3b82f6;
     --danger: #ef4444;
     --success: #10b981;
 }
@@ -17,8 +17,19 @@ body[data-theme="dark"] {
     --line: #334155;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-body { background-color: var(--bg); color: var(--text); padding-bottom: 70px; transition: background 0.3s, color 0.3s; }
+* { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+}
+
+body { 
+    background-color: var(--bg); 
+    color: var(--text); 
+    padding-bottom: 70px; 
+    transition: background 0.3s, color 0.3s; 
+}
 
 /* AUTH SCREENS */
 .auth-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -27,9 +38,42 @@ body { background-color: var(--bg); color: var(--text); padding-bottom: 70px; tr
 .auth-link { color: var(--primary); font-size: 14px; margin-top: 15px; cursor: pointer; text-decoration: underline; }
 
 /* INPUTS & BUTTONS */
-input, select { width: 100%; padding: 12px 15px; margin-bottom: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text); font-size: 14px; outline: none; }
-input:focus, select:focus { border-color: var(--primary); }
-.btn-primary { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; transition: opacity 0.2s; }
+input, select { 
+    width: 100%; 
+    padding: 12px 15px; 
+    margin-bottom: 0px; /* Reset para usar gaps en flex/grid */
+    border: 1px solid var(--line); 
+    border-radius: 10px; 
+    background: var(--bg); 
+    color: var(--text); 
+    font-size: 14px; 
+    outline: none; 
+}
+
+form > input, form > select {
+    margin-bottom: 15px; /* Margen normal para inputs sueltos en form */
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-primary { 
+    width: 100%; 
+    padding: 14px; 
+    background: var(--primary); 
+    color: white; 
+    border: none; 
+    border-radius: 10px; 
+    font-weight: bold; 
+    font-size: 16px; 
+    cursor: pointer; 
+    transition: opacity 0.2s; 
+}
+
 .btn-primary:active { opacity: 0.8; }
 .del-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--danger); margin-right: 10px; }
 .edit-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--primary); margin-right: 15px; }
@@ -43,18 +87,22 @@ input:focus, select:focus { border-color: var(--primary); }
 
 .main-content { padding: 20px; max-width: 600px; margin: 0 auto; }
 .card { background: var(--surface); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
-.card h3, .card h4 { margin-bottom: 15px; color: var(--text); }
 
+/* Corrección de bordes de formulario */
+.auth-card, .card-cuenta {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--line);
+}
+
+.card h3, .card h4 { margin-bottom: 15px; color: var(--text); }
 .bank-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .bank-item:last-child { border-bottom: none; padding-bottom: 0; }
 .bank-info { display: flex; align-items: center; gap: 10px; }
 .bank-icon { width: 24px; height: 24px; border-radius: 4px; object-fit: contain; }
 .bank-details { display: flex; flex-direction: column; }
-
 .action-link { font-size: 10px; color: var(--primary); cursor: pointer; text-decoration: underline; margin-left: 8px; }
 .action-link.danger { color: var(--danger); }
 .btn-check-pago { background: var(--primary); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; margin-top: 4px; }
-
 .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
 .color-swatch.active { border-color: var(--text); transform: scale(1.1); }
 
@@ -62,7 +110,6 @@ input:focus, select:focus { border-color: var(--primary); }
 .tab-content { display: none; animation: fadeIn 0.3s; }
 .tab-content.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
 .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; border-top: 1px solid var(--line); }
 .nav-item { background: none; border: none; display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--muted); cursor: pointer; }
 .nav-item span { font-size: 20px; margin-bottom: 4px; transition: transform 0.2s; }
@@ -70,18 +117,54 @@ input:focus, select:focus { border-color: var(--primary); }
 .nav-item.active span { transform: scale(1.2); }
 
 /* --- ANIMACIÓN DE CARGA ESTILO CÁPSULA --- */
-#loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
+#loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .loading-wrapper { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .loading-text { font-family: 'Arial', sans-serif; font-weight: 900; font-size: 24px; letter-spacing: 4px; color: var(--primary); }
 .progress-capsule { width: 180px; height: 45px; border: 5px solid var(--primary); border-radius: 25px; padding: 4px; display: flex; gap: 5px; }
 .progress-segment { flex: 1; background-color: var(--primary); border-radius: 2px; animation: fillProgress 1.2s infinite; opacity: 0; }
 .progress-capsule .progress-segment:first-child { border-top-left-radius: 14px; border-bottom-left-radius: 14px; }
 .progress-capsule .progress-segment:last-child { border-top-right-radius: 14px; border-bottom-right-radius: 14px; }
-
 .progress-segment:nth-child(1) { animation-delay: 0.0s; }
 .progress-segment:nth-child(2) { animation-delay: 0.2s; }
 .progress-segment:nth-child(3) { animation-delay: 0.4s; }
 .progress-segment:nth-child(4) { animation-delay: 0.6s; }
 .progress-segment:nth-child(5) { animation-delay: 0.8s; }
-
 @keyframes fillProgress { 0% { opacity: 0; } 10%, 100% { opacity: 1; } }
+
+/* --- TOGGLE THEME SWITCH --- */
+.theme-switch { position: relative; display: inline-block; width: 64px; height: 34px; margin-left: auto; }
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #1e293b; transition: .4s; border-radius: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 6px; overflow: hidden; }
+.slider .icon { font-size: 14px; z-index: 1; }
+.slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+input:checked + .slider { background-color: #e2e8f0; }
+input:checked + .slider:before { transform: translateX(30px); }
+
+/* --- BOTÓN FLOTANTE (FAB) --- */
+.fab-container { position: fixed; bottom: 80px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; }
+.fab-main { width: 60px; height: 60px; border-radius: 50%; background-color: var(--primary); color: white; font-size: 32px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; display: flex; justify-content: center; align-items: center; transition: transform 0.3s ease, background-color 0.3s ease; }
+.fab-main.active { transform: rotate(45deg); background-color: var(--danger); }
+.fab-menu { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; opacity: 0; visibility: hidden; transform: translateY(20px); transition: all 0.3s ease; align-items: flex-end; }
+.fab-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.fab-item { padding: 10px 18px; border-radius: 20px; color: white; border: none; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: transform 0.2s; }
+.fab-item:active { transform: scale(0.95); }
+
+/* --- DISEÑO DE TARJETAS BANCARIAS --- */
+.tarjetas-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+.tarjeta-bancaria { position: relative; border-radius: 16px; padding: 20px; color: white; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s; }
+.tarjeta-bancaria:active { transform: scale(0.98); }
+.tb-bg-shape { position: absolute; background: rgba(255, 255, 255, 0.08); border-radius: 50%; }
+.tb-shape-1 { width: 150px; height: 150px; top: -50px; right: -30px; }
+.tb-shape-2 { width: 100px; height: 100px; bottom: -30px; right: 60px; }
+.tb-content { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 15px; }
+.tb-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.tb-banco { font-weight: 800; font-size: 14px; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.tb-digitos { font-size: 11px; opacity: 0.8; letter-spacing: 2px; margin-top: 2px; }
+.tb-badge { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 12px; font-size: 10px; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px); }
+.tb-saldo { font-size: 26px; font-weight: 900; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.tb-footer { display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; }
+.tb-nombre { font-weight: bold; opacity: 0.95; }
+.tb-actions { margin-top: 15px; display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px; flex-wrap: wrap; }
+.tb-action-btn { background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: bold; transition: background 0.2s;}
+.tb-action-btn:active { background: rgba(255,255,255,0.4); }
+.tb-action-btn.danger { background: rgba(239, 68, 68, 0.8); }
