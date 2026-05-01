@@ -29,6 +29,7 @@ body {
     color: var(--text); 
     padding-bottom: 70px; 
     transition: background 0.3s, color 0.3s; 
+    overflow-x: hidden;
 }
 
 /* AUTH SCREENS */
@@ -41,7 +42,7 @@ body {
 input, select { 
     width: 100%; 
     padding: 12px 15px; 
-    margin-bottom: 0px; /* Reset para usar gaps en flex/grid */
+    margin-bottom: 0px; 
     border: 1px solid var(--line); 
     border-radius: 10px; 
     background: var(--bg); 
@@ -50,9 +51,7 @@ input, select {
     outline: none; 
 }
 
-form > input, form > select {
-    margin-bottom: 15px; /* Margen normal para inputs sueltos en form */
-}
+form > input, form > select { margin-bottom: 15px; }
 
 input:focus, select:focus {
     outline: none;
@@ -85,31 +84,80 @@ input:focus, select:focus {
 .user-menu-dropdown p { padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 14px; cursor: pointer; margin: 0; }
 .user-menu-dropdown p:last-child { border: none; }
 
-.main-content { padding: 20px; max-width: 600px; margin: 0 auto; }
-.card { background: var(--surface); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+.main-content { padding: 20px; max-width: 600px; margin: 0 auto; overflow-x: hidden; }
+.card { background: var(--surface); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--line); }
 
-/* Corrección de bordes de formulario */
-.auth-card, .card-cuenta {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    border: 1px solid var(--line);
+/* --- NUEVO DISEÑO PATRIMONIO PREMIUM --- */
+.patrimonio-card {
+    position: relative;
+    background: linear-gradient(135deg, #4f46e5, #8b5cf6); /* Gradiente azul/morado premium */
+    color: white;
+    border: none;
+    overflow: hidden;
+    padding: 0;
+    min-height: 240px;
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+}
+
+.patrimonio-content {
+    position: relative;
+    z-index: 2;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.pat-subtitle {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    opacity: 0.85;
+    text-transform: uppercase;
+}
+
+.pat-message {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: auto; /* Empuja el div inferior hacia abajo */
+    line-height: 1.4;
+}
+
+.pat-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 40px;
+    position: relative;
+    z-index: 2;
+}
+
+.patrimonio-chart-container {
+    position: absolute;
+    bottom: -5px; /* Ocultar el borde inferior de la gráfica */
+    left: 0;
+    width: 100%;
+    height: 55%; /* Altura de la ola */
+    z-index: 1;
 }
 
 .card h3, .card h4 { margin-bottom: 15px; color: var(--text); }
 .bank-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .bank-item:last-child { border-bottom: none; padding-bottom: 0; }
-.bank-info { display: flex; align-items: center; gap: 10px; }
-.bank-icon { width: 24px; height: 24px; border-radius: 4px; object-fit: contain; }
-.bank-details { display: flex; flex-direction: column; }
-.action-link { font-size: 10px; color: var(--primary); cursor: pointer; text-decoration: underline; margin-left: 8px; }
-.action-link.danger { color: var(--danger); }
-.btn-check-pago { background: var(--primary); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; margin-top: 4px; }
 .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
 .color-swatch.active { border-color: var(--text); transform: scale(1.1); }
 
-/* TABS Y NAVEGACIÓN */
-.tab-content { display: none; animation: fadeIn 0.3s; }
-.tab-content.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+/* --- TABS Y TRANSICIÓN TIPO DESLIZAR --- */
+.tab-content { display: none; opacity: 0; }
+.tab-content.active { 
+    display: block; 
+    animation: slideInTab 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) forwards; 
+}
+@keyframes slideInTab { 
+    from { opacity: 0; transform: translateX(30px); } 
+    to { opacity: 1; transform: translateX(0); } 
+}
+
 .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--surface); display: flex; justify-content: space-around; padding: 10px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 100; border-top: 1px solid var(--line); }
 .nav-item { background: none; border: none; display: flex; flex-direction: column; align-items: center; font-size: 11px; color: var(--muted); cursor: pointer; }
 .nav-item span { font-size: 20px; margin-bottom: 4px; transition: transform 0.2s; }
@@ -151,6 +199,26 @@ input:checked + .slider:before { transform: translateX(30px); }
 
 /* --- DISEÑO DE TARJETAS BANCARIAS --- */
 .tarjetas-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+
+/* CARRUSEL HORIZONTAL PARA INICIO */
+.tarjetas-slider {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Ocultar scrollbar en Firefox */
+}
+.tarjetas-slider::-webkit-scrollbar {
+    display: none; /* Ocultar scrollbar en Chrome/Safari */
+}
+.tarjetas-slider .tarjeta-bancaria {
+    min-width: 280px; /* Ancho fijo para que se deslicen */
+    max-width: 300px;
+    scroll-snap-align: center;
+    flex-shrink: 0;
+}
+
 .tarjeta-bancaria { position: relative; border-radius: 16px; padding: 20px; color: white; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s; }
 .tarjeta-bancaria:active { transform: scale(0.98); }
 .tb-bg-shape { position: absolute; background: rgba(255, 255, 255, 0.08); border-radius: 50%; }

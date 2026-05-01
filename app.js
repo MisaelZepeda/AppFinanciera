@@ -22,8 +22,9 @@ let state = {
 };
 
 let chartInstance = null;
+let chartPatrimonioInstance = null; // NUEVA VARIABLE PARA EL GRAFICO PREMIUM
 let currentEditId = null;
-let currentCuentaEditId = null; // NUEVA VARIABLE GLOBAL PARA EDICIÓN DE CUENTAS
+let currentCuentaEditId = null; 
 let currentMovMode = 'pago';
 
 // 2. SEGURIDAD DE SESIÓN
@@ -172,7 +173,7 @@ function mostrarFraseDiaria() {
         "El dinero es una herramienta. Te llevará a donde desees, pero no te reemplazará como conductor.", 
         "La educación financiera es el activo más poderoso que puedes tener.", 
         "Tu futuro financiero depende de lo que hagas hoy, no mañana.", 
-        "No trabajes por el dinero, haz que el dinero trabaje para ti.", 
+        "No trabajes por el dinero, haz que el dinero trabajaje para ti.", 
         "El conocimiento es la mejor inversión que puedes hacer." 
     ];
     const hoy = new Date(); 
@@ -264,7 +265,12 @@ function closeDropdowns() {
 }
 
 function cambiarTab(id, btn) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); 
+    // Para reiniciar la animación del slide, forzamos un reflow
+    document.querySelectorAll('.tab-content').forEach(t => {
+        t.classList.remove('active');
+        void t.offsetWidth; // TRUCO: Forza reflow para que la animación CSS se reinicie
+    }); 
+    
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     
     document.getElementById('tab-' + id).classList.add('active'); 
@@ -275,7 +281,6 @@ function cambiarTab(id, btn) {
     window.scrollTo(0,0);
     currentEditId = null; 
     
-    // Al cambiar de tab, resetear el form de cuentas para no dejar edición colgada
     if(id !== 'cuentas') cancelarEdicionCuenta();
     
     document.querySelectorAll('form').forEach(f => { 
@@ -296,13 +301,12 @@ function toggleThemeSwitch(checkbox) {
     document.body.setAttribute('data-theme', t); 
 }
 
-// 6. LÓGICA TRANSACCIONAL ROBUSTA
+// 6. LÓGICA TRANSACCIONAL
 function revertirTransaccion(fid) {
     const t = state.transacciones.find(x => x.firebaseId === fid); 
     if (!t) return {}; 
     
     let updates = {};
-    
     if (t.tipo === 'ingreso') { 
         const c = state.cuentas.find(x => x.id == t.cuentaId); 
         if(c) updates[`cuentas/${c.id}/saldo`] = c.saldo - t.monto; 
@@ -315,7 +319,6 @@ function revertirTransaccion(fid) {
         if(or) updates[`cuentas/${or.id}/saldo`] = or.saldo + t.monto; 
         if(des) updates[`cuentas/${des.id}/saldo`] = (des.tipo === 'debito' || des.tipo === 'efectivo') ? des.saldo - t.monto : des.saldo + t.monto; 
     }
-    
     return updates;
 }
 
@@ -329,14 +332,12 @@ function eliminarTransaccion(fid) {
 function editIngreso(fid) { 
     const t = state.transacciones.find(x => x.firebaseId === fid); 
     cambiarTab('ingresos'); 
-    
     document.getElementById('inDesc').value = t.desc; 
     document.getElementById('inMonto').value = t.monto; 
     document.getElementById('inCuenta').value = t.cuentaId; 
     document.getElementById('inCuenta').disabled = true; 
-    
     currentEditId = fid; 
-    document.getElementById('ingresoFormTitle').innerText = "Editando Ingreso (Cuenta Fija)"; 
+    document.getElementById('ingresoFormTitle').innerText = "Editando Ingreso"; 
 }
 
 function handleIngreso(e) {
@@ -346,42 +347,24 @@ function handleIngreso(e) {
     
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('inCuenta').value; 
     const c = state.cuentas.find(x => x.id == cId);
-    
     let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
     const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     
-    updates[`transacciones/${id}`] = { 
-        desc: document.getElementById('inDesc').value, 
-        monto: m, 
-        tipo: 'ingreso', 
-        cuentaId: c.id, 
-        fecha: oldFecha 
-    }; 
-    
+    updates[`transacciones/${id}`] = { desc: document.getElementById('inDesc').value, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: oldFecha }; 
     updates[`cuentas/${c.id}/saldo`] = currentSaldo + m;
     
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
-        e.target.reset(); 
-        currentEditId = null; 
-        document.getElementById('inCuenta').disabled = false; 
-        document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; 
+        e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; 
     });
 }
 
 function editGasto(fid) { 
     const t = state.transacciones.find(x => x.firebaseId === fid); 
     cambiarTab('gastos'); 
-    
-    document.getElementById('gaDesc').value = t.desc; 
-    document.getElementById('gaMonto').value = t.monto; 
-    document.getElementById('gaCat').value = t.cat; 
-    document.getElementById('gaFuente').value = t.cuentaId; 
-    document.getElementById('gaFuente').disabled = true; 
-    
-    currentEditId = fid; 
-    document.getElementById('gastoFormTitle').innerText = "Editando Gasto (Cuenta Fija)"; 
+    document.getElementById('gaDesc').value = t.desc; document.getElementById('gaMonto').value = t.monto; document.getElementById('gaCat').value = t.cat; document.getElementById('gaFuente').value = t.cuentaId; document.getElementById('gaFuente').disabled = true; 
+    currentEditId = fid; document.getElementById('gastoFormTitle').innerText = "Editando Gasto"; 
 }
 
 function handleGasto(e) {
@@ -391,28 +374,16 @@ function handleGasto(e) {
     
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('gaFuente').value; 
     const c = state.cuentas.find(x => x.id == cId);
-    
     let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
     const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     
-    updates[`transacciones/${id}`] = { 
-        desc: document.getElementById('gaDesc').value, 
-        cat: document.getElementById('gaCat').value, 
-        monto: m, 
-        tipo: 'gasto', 
-        cuentaId: c.id, 
-        fecha: oldFecha 
-    }; 
-    
+    updates[`transacciones/${id}`] = { desc: document.getElementById('gaDesc').value, cat: document.getElementById('gaCat').value, monto: m, tipo: 'gasto', cuentaId: c.id, fecha: oldFecha }; 
     updates[`cuentas/${c.id}/saldo`] = (c.tipo === 'debito' || c.tipo === 'efectivo') ? currentSaldo - m : currentSaldo + m;
     
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
-        e.target.reset(); 
-        currentEditId = null; 
-        document.getElementById('gaFuente').disabled = false; 
-        document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; 
+        e.target.reset(); currentEditId = null; document.getElementById('gaFuente').disabled = false; document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; 
     });
 }
 
@@ -427,16 +398,9 @@ function setMovMode(mode) {
 function editMovimiento(fid) { 
     const t = state.transacciones.find(x => x.firebaseId === fid); 
     cambiarTab('traspasos'); 
-    
     setMovMode(t.subtipo || 'traspaso'); 
-    document.getElementById('movOrigen').value = t.origenId; 
-    document.getElementById('movDestino').value = t.destinoId; 
-    document.getElementById('movMonto').value = t.monto; 
-    document.getElementById('movOrigen').disabled = true; 
-    document.getElementById('movDestino').disabled = true; 
-    
-    currentEditId = fid; 
-    document.getElementById('movTitle').innerText = "Editando Movimiento"; 
+    document.getElementById('movOrigen').value = t.origenId; document.getElementById('movDestino').value = t.destinoId; document.getElementById('movMonto').value = t.monto; document.getElementById('movOrigen').disabled = true; document.getElementById('movDestino').disabled = true; 
+    currentEditId = fid; document.getElementById('movTitle').innerText = "Editando Movimiento"; 
 }
 
 function handleMovimiento(e) {
@@ -459,28 +423,12 @@ function handleMovimiento(e) {
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
     const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     
-    updates[`transacciones/${id}`] = { 
-        tipo: 'movimiento', 
-        subtipo: currentMovMode, 
-        monto: m, 
-        desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, 
-        origenId: or.id, 
-        destinoId: des.id, 
-        fecha: oldFecha 
-    };
+    updates[`transacciones/${id}`] = { tipo: 'movimiento', subtipo: currentMovMode, monto: m, desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, origenId: or.id, destinoId: des.id, fecha: oldFecha };
     
-    if (currentMovMode === 'pago') { 
-        const mesActual = new Date().getMonth(); 
-        updates[`cuentas/${des.id}/mesPagado`] = mesActual; 
-    }
+    if (currentMovMode === 'pago') updates[`cuentas/${des.id}/mesPagado`] = new Date().getMonth(); 
     
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
-        e.target.reset(); 
-        currentEditId = null; 
-        document.getElementById('movOrigen').disabled = false; 
-        document.getElementById('movDestino').disabled = false; 
-        document.getElementById('movTitle').innerText = "Nuevo Movimiento"; 
-        alert("Movimiento procesado."); 
+        e.target.reset(); currentEditId = null; document.getElementById('movOrigen').disabled = false; document.getElementById('movDestino').disabled = false; document.getElementById('movTitle').innerText = "Nuevo Movimiento"; alert("Movimiento procesado."); 
     });
 }
 
@@ -488,101 +436,54 @@ function sumarInteres(id) {
     const m = parseFloat(prompt("Interés generado hoy ($):")); 
     if (!m || isNaN(m) || m <= 0) return;
     
-    const c = state.cuentas.find(x => x.id == id); 
-    if (!c) return;
-    
+    const c = state.cuentas.find(x => x.id == id); if (!c) return;
     const transId = db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
     let updates = {}; 
-    
-    updates[`transacciones/${transId}`] = { 
-        desc: `Rendimiento`, 
-        monto: m, 
-        tipo: 'ingreso', 
-        cuentaId: c.id, 
-        fecha: new Date().toISOString().split('T')[0] 
-    }; 
-    
+    updates[`transacciones/${transId}`] = { desc: `Rendimiento`, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: new Date().toISOString().split('T')[0] }; 
     updates[`cuentas/${c.id}/saldo`] = c.saldo + m;
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates); 
 }
 
-// 7. ZONA DE PELIGRO Y BACKUPS
 function resetearCuenta() { 
     if(!confirm("¿Borrar historial y dejar saldos en $0?")) return; 
-    
-    let updates = {}; 
-    updates['transacciones'] = null; 
-    
-    state.cuentas.forEach(c => { 
-        updates[`cuentas/${c.id}/saldo`] = 0; 
-        updates[`cuentas/${c.id}/mesPagado`] = null; 
-    }); 
-    
+    let updates = { 'transacciones': null }; 
+    state.cuentas.forEach(c => { updates[`cuentas/${c.id}/saldo`] = 0; updates[`cuentas/${c.id}/mesPagado`] = null; }); 
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => alert("Restablecido a $0.")); 
 }
 
 function eliminarUsuario() {
     if(!confirm("¡PELIGRO! Esto borrará tu cuenta permanentemente. ¿Continuar?")) return; 
-    
     const user = auth.currentUser;
     db.ref(`Usuarios/${user.uid}`).remove().then(() => { 
-        user.delete().then(() => { 
-            alert("Cuenta eliminada."); 
-            window.location.reload(); 
-        }).catch(e => { 
-            if(e.code === 'auth/requires-recent-login') { 
-                alert("Por seguridad, vuelve a iniciar sesión y repite este proceso."); 
-                auth.signOut().then(() => window.location.reload()); 
-            } else {
-                alert(e.message); 
-            }
-        }); 
+        user.delete().then(() => { alert("Cuenta eliminada."); window.location.reload(); }).catch(e => { alert(e.message); }); 
     }); 
 }
 
 function exportarBackup() {
     db.ref(`Usuarios/${auth.currentUser.uid}`).once('value').then(snap => {
-        const data = snap.val(); 
-        if(!data) { alert("No hay datos."); return; }
-        
+        const data = snap.val(); if(!data) { alert("No hay datos."); return; }
         const a = document.createElement('a'); 
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: "application/json"}));
-        
-        a.href = url; 
-        a.download = `Respaldo_DashboardPro_${new Date().toISOString().split('T')[0]}.json`; 
-        document.body.appendChild(a); 
-        a.click(); 
-        document.body.removeChild(a); 
-        URL.revokeObjectURL(url);
-    }).catch(e => alert("Error: " + e.message)); 
+        a.href = url; a.download = `Respaldo_${new Date().toISOString().split('T')[0]}.json`; 
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }); 
 }
 
 function importarBackup(e) {
-    const file = e.target.files[0]; 
-    if (!file) return;
-    
-    if(!confirm("ADVERTENCIA: Esto sobrescribirá todos tus datos actuales. ¿Continuar?")) { 
-        e.target.value = ''; 
-        return; 
-    }
-    
+    const file = e.target.files[0]; if (!file) return;
+    if(!confirm("ADVERTENCIA: Sobrescribirá todo. ¿Continuar?")) { e.target.value = ''; return; }
     const reader = new FileReader(); 
     reader.onload = function(ev) { 
         try { 
             const data = JSON.parse(ev.target.result); 
-            db.ref(`Usuarios/${auth.currentUser.uid}`).set(data).then(() => { 
-                alert("Restaurado."); 
-                window.location.reload(); 
-            }); 
-        } catch(err) { 
-            alert("Archivo inválido."); 
-        } 
+            db.ref(`Usuarios/${auth.currentUser.uid}`).set(data).then(() => { alert("Restaurado."); window.location.reload(); }); 
+        } catch(err) { alert("Archivo inválido."); } 
         e.target.value = ''; 
     }; 
     reader.readAsText(file); 
 }
 
-// 8. RENDERIZADO VISUAL Y TARJETAS DIGITALES
+// 8. RENDERIZADO VISUAL
 function getBankColor(banco) {
     const b = banco.toLowerCase();
     if (b.includes('nu') || b.includes('klar') || b.includes('stori')) return 'linear-gradient(135deg, #8b5cf6, #6d28d9)';
@@ -590,6 +491,61 @@ function getBankColor(banco) {
     if (b.includes('santander') || b.includes('banorte') || b.includes('scotiabank')) return 'linear-gradient(135deg, #ef4444, #b91c1c)';
     if (b.includes('hey') || b.includes('mercadopago')) return 'linear-gradient(135deg, #10b981, #047857)';
     return 'linear-gradient(135deg, #475569, #1e293b)';
+}
+
+// NUEVA FUNCION: Renderiza el Gráfico de Ola de Patrimonio Premium
+function renderPatrimonioChart(patrimonioActual) {
+    const ctxCanvas = document.getElementById('chartPatrimonio');
+    if (!ctxCanvas) return;
+    
+    const ctx = ctxCanvas.getContext('2d');
+    
+    // Gradiente debajo de la línea
+    let gradient = ctx.createLinearGradient(0, 0, 0, 150);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+    if (chartPatrimonioInstance) chartPatrimonioInstance.destroy();
+
+    // Creamos un arreglo de datos simulado para generar la curva bonita hacia el patrimonio actual
+    let dataCurve = [];
+    if (patrimonioActual > 0) {
+        dataCurve = [patrimonioActual*0.7, patrimonioActual*0.75, patrimonioActual*0.72, patrimonioActual*0.8, patrimonioActual*0.85, patrimonioActual*0.9, patrimonioActual];
+    } else if (patrimonioActual < 0) {
+        dataCurve = [patrimonioActual*1.4, patrimonioActual*1.3, patrimonioActual*1.35, patrimonioActual*1.2, patrimonioActual*1.1, patrimonioActual*1.05, patrimonioActual];
+    } else {
+        dataCurve = [0, 0, 0, 0, 0, 0, 0];
+    }
+
+    chartPatrimonioInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['1', '2', '3', '4', '5', '6', 'Hoy'],
+            datasets: [{
+                data: dataCurve,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.4, // Hace la curva suave
+                pointRadius: 0, // Oculta los puntos
+                pointHoverRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+            },
+            scales: {
+                x: { display: false },
+                y: { display: false, min: Math.min(...dataCurve) * 0.9 }
+            },
+            layout: { padding: 0 }
+        }
+    });
 }
 
 function renderAll() {
@@ -607,7 +563,6 @@ function renderAll() {
     state.cuentas.forEach(c => {
         let aviso = "";
         
-        // Logica de Fechas de Pago (Solo Crédito típicamente, pero se evalúa si existe)
         if(c.diaPago && c.diaPago > 0) {
             const yaPagado = c.mesPagado === mesAct; 
             const vence = c.diaPago - diaHoy;
@@ -686,13 +641,18 @@ function renderAll() {
         hMae += baseCardHtml + actionsHtml + `</div></div>`; 
     });
     
-    document.getElementById('widgetDebitos').innerHTML = hDeb || "<small>Vacío</small>"; 
-    document.getElementById('widgetCreditos').innerHTML = hCre || "<small>Vacío</small>"; 
+    document.getElementById('widgetDebitos').innerHTML = hDeb || "<small style='padding: 0 10px;'>Aún no agregas cuentas de débito.</small>"; 
+    document.getElementById('widgetCreditos').innerHTML = hCre || "<small style='padding: 0 10px;'>Aún no agregas tarjetas de crédito.</small>"; 
     document.getElementById('listaMaestraCuentas').innerHTML = hMae;
     
     document.getElementById('valTengo').innerText = `$${tengo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; 
     document.getElementById('valDebo').innerText = `$${debo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; 
-    document.getElementById('valPatrimonio').innerText = `$${(tengo - debo).toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+    
+    const patrimonio = tengo - debo;
+    document.getElementById('valPatrimonio').innerText = `$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+    
+    // Renderiza la ola visual de Chart.js
+    renderPatrimonioChart(patrimonio);
     
     const prefijoMes = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
     const txMes = state.transacciones.filter(t => t.fecha && t.fecha.startsWith(prefijoMes));
@@ -703,20 +663,12 @@ function renderAll() {
     document.getElementById('homeIngresos').innerText = `$${iT.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; 
     document.getElementById('homeGastos').innerText = `$${gT.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
     
-    let hG = "";
-    let hI = "";
-    let hM = "";
+    let hG = ""; let hI = ""; let hM = "";
     
     state.transacciones.slice().reverse().forEach(t => {
         let actionStr = t.tipo === 'movimiento' ? `editMovimiento('${t.firebaseId}')` : (t.tipo === 'gasto' ? `editGasto('${t.firebaseId}')` : `editIngreso('${t.firebaseId}')`);
         const item = `<div class="bank-item"><div>${t.desc}<br><small>${t.fecha}</small></div><div style="display:flex; align-items:center;"><button class="del-btn" onclick="eliminarTransaccion('${t.firebaseId}')">🗑️</button><button class="edit-btn" onclick="${actionStr}">✏️</button><b>$${Number(t.monto || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}</b></div></div>`;
-        if(t.tipo === 'gasto') {
-            hG += item; 
-        } else if (t.tipo === 'ingreso') {
-            hI += item; 
-        } else {
-            hM += item;
-        }
+        if(t.tipo === 'gasto') hG += item; else if (t.tipo === 'ingreso') hI += item; else hM += item;
     });
     
     document.getElementById('listaGastos').innerHTML = hG; 
@@ -729,7 +681,6 @@ function renderAll() {
 }
 
 function actualizarSelects() {
-    // Al hacer un gasto/ingreso a débito, debe incluir "efectivo" también
     const optDeb = state.cuentas.filter(c => c.tipo==='debito' || c.tipo==='efectivo').map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     const optCre = state.cuentas.filter(c => c.tipo==='credito').map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     const optAll = state.cuentas.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
@@ -752,19 +703,8 @@ function renderChart() {
     
     chartInstance = new Chart(ctx, { 
         type:'doughnut', 
-        data:{ 
-            labels:Object.keys(cats), 
-            datasets:[{
-                data:Object.values(cats), 
-                backgroundColor:['#3b82f6','#10b981','#ef4444','#8b5cf6', '#f59e0b', '#64748b'], 
-                borderWidth:0
-            }] 
-        }, 
-        options:{ 
-            maintainAspectRatio:false, 
-            plugins:{legend:{display:false}}, 
-            cutout:'75%' 
-        } 
+        data:{ labels:Object.keys(cats), datasets:[{data:Object.values(cats), backgroundColor:['#3b82f6','#10b981','#ef4444','#8b5cf6', '#f59e0b', '#64748b'], borderWidth:0}] }, 
+        options:{ maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'75%' } 
     });
 }
 
@@ -772,28 +712,13 @@ function renderChart() {
 function getBankLogo(banco) {
     const nombre = banco.toLowerCase().trim();
     const logosMexicanos = { 
-        "bbva": "bbva.mx", "nu": "nu.com.mx", "nubank": "nu.com.mx", "santander": "santander.com.mx", 
-        "banamex": "banamex.com", "citi": "banamex.com", "banorte": "banorte.com", "hsbc": "hsbc.com.mx", 
-        "scotiabank": "scotiabank.com.mx", "inbursa": "inbursa.com", "hey banco": "heybanco.com", 
-        "heybanco": "heybanco.com", "spin": "spinbyoxxo.com.mx", "mercado pago": "mercadopago.com.mx", 
-        "mercadopago": "mercadopago.com.mx", "klar": "klar.mx", "stori": "storicard.com", 
-        "uala": "uala.mx", "ualá": "uala.mx", "bienestar": "bancodelbienestar.com.mx", 
-        "bancoppel": "bancoppel.com", "coppel": "bancoppel.com", "azteca": "bancoazteca.com.mx", 
-        "fonacot": "fonacot.gob.mx", "infonavit": "infonavit.org.mx", "kueski": "kueski.com", "paypal": "paypal.com" 
+        "bbva": "bbva.mx", "nu": "nu.com.mx", "nubank": "nu.com.mx", "santander": "santander.com.mx", "banamex": "banamex.com", "citi": "banamex.com", "banorte": "banorte.com", "hsbc": "hsbc.com.mx", "scotiabank": "scotiabank.com.mx", "inbursa": "inbursa.com", "hey banco": "heybanco.com", "heybanco": "heybanco.com", "spin": "spinbyoxxo.com.mx", "mercado pago": "mercadopago.com.mx", "mercadopago": "mercadopago.com.mx", "klar": "klar.mx", "stori": "storicard.com", "uala": "uala.mx", "ualá": "uala.mx", "bienestar": "bancodelbienestar.com.mx", "bancoppel": "bancoppel.com", "coppel": "bancoppel.com", "azteca": "bancoazteca.com.mx", "fonacot": "fonacot.gob.mx", "infonavit": "infonavit.org.mx", "kueski": "kueski.com", "paypal": "paypal.com" 
     };
-    
-    for (const clave in logosMexicanos) { 
-        if (nombre.includes(clave)) return `https://www.google.com/s2/favicons?domain=${logosMexicanos[clave]}&sz=128`; 
-    }
+    for (const clave in logosMexicanos) { if (nombre.includes(clave)) return `https://www.google.com/s2/favicons?domain=${logosMexicanos[clave]}&sz=128`; }
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(banco)}&background=random&color=fff&size=128&bold=true`; 
 }
 
-function selectColor(hex, el) { 
-    state.selectedColor = hex; 
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active')); 
-    el.classList.add('active'); 
-    document.documentElement.style.setProperty('--primary', hex); 
-}
+function selectColor(hex, el) { state.selectedColor = hex; document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active')); el.classList.add('active'); document.documentElement.style.setProperty('--primary', hex); }
 
 function toggleCamposCuenta() {
     const tipo = document.getElementById('cuTipo').value;
@@ -801,53 +726,23 @@ function toggleCamposCuenta() {
     const cuLimite = document.getElementById('cuLimite');
     const grupoFechas = document.getElementById('grupoFechas');
 
-    if (tipo === 'efectivo') {
-        grupoDigitos.style.display = 'none';
-        cuLimite.style.display = 'none';
-        grupoFechas.style.display = 'none';
-    } else if (tipo === 'debito') {
-        grupoDigitos.style.display = 'block';
-        cuLimite.style.display = 'none';
-        grupoFechas.style.display = 'none';
-    } else if (tipo === 'credito') {
-        grupoDigitos.style.display = 'block';
-        cuLimite.style.display = 'block';
-        grupoFechas.style.display = 'grid'; // Grid para mantener el layout de 2 columnas
-    }
+    if (tipo === 'efectivo') { grupoDigitos.style.display = 'none'; cuLimite.style.display = 'none'; grupoFechas.style.display = 'none'; } 
+    else if (tipo === 'debito') { grupoDigitos.style.display = 'block'; cuLimite.style.display = 'none'; grupoFechas.style.display = 'none'; } 
+    else if (tipo === 'credito') { grupoDigitos.style.display = 'block'; cuLimite.style.display = 'block'; grupoFechas.style.display = 'grid'; }
 }
 
 function editCuenta(id) {
-    const c = state.cuentas.find(x => x.id == id);
-    if (!c) return;
-    
+    const c = state.cuentas.find(x => x.id == id); if (!c) return;
     cambiarTab('cuentas');
     
-    document.getElementById('cuNombre').value = c.nombre || '';
-    document.getElementById('cuBanco').value = c.banco || '';
-    document.getElementById('cuTipo').value = c.tipo || 'debito';
-    document.getElementById('cuSaldo').value = c.saldo || 0;
-    document.getElementById('cuDigitos').value = c.digitos || '';
-    document.getElementById('cuLimite').value = c.limite || '';
-    document.getElementById('cuPago').value = c.diaPago || '';
-    document.getElementById('cuCorte').value = c.diaCorte || '';
-    
+    document.getElementById('cuNombre').value = c.nombre || ''; document.getElementById('cuBanco').value = c.banco || ''; document.getElementById('cuTipo').value = c.tipo || 'debito'; document.getElementById('cuSaldo').value = c.saldo || 0; document.getElementById('cuDigitos').value = c.digitos || ''; document.getElementById('cuLimite').value = c.limite || ''; document.getElementById('cuPago').value = c.diaPago || ''; document.getElementById('cuCorte').value = c.diaCorte || '';
     toggleCamposCuenta();
     
-    currentCuentaEditId = id;
-    document.getElementById('cuentaFormTitle').innerText = "Editando Cuenta";
-    document.getElementById('btnGuardarCuenta').innerText = "Guardar Cambios";
-    document.getElementById('btnCancelarEdicionCuenta').style.display = 'block';
-    
-    window.scrollTo(0,0);
+    currentCuentaEditId = id; document.getElementById('cuentaFormTitle').innerText = "Editando Cuenta"; document.getElementById('btnGuardarCuenta').innerText = "Guardar Cambios"; document.getElementById('btnCancelarEdicionCuenta').style.display = 'block'; window.scrollTo(0,0);
 }
 
 function cancelarEdicionCuenta() {
-    currentCuentaEditId = null;
-    document.getElementById('formCuenta').reset();
-    document.getElementById('cuentaFormTitle').innerText = "Registrar Cuenta";
-    document.getElementById('btnGuardarCuenta').innerText = "Añadir Cuenta";
-    document.getElementById('btnCancelarEdicionCuenta').style.display = 'none';
-    toggleCamposCuenta();
+    currentCuentaEditId = null; document.getElementById('formCuenta').reset(); document.getElementById('cuentaFormTitle').innerText = "Registrar Cuenta"; document.getElementById('btnGuardarCuenta').innerText = "Añadir Cuenta"; document.getElementById('btnCancelarEdicionCuenta').style.display = 'none'; toggleCamposCuenta();
 }
 
 function handleNuevaCuenta(e) { 
@@ -858,416 +753,131 @@ function handleNuevaCuenta(e) {
     
     let digitos = "", limite = 0, diaPago = 0, diaCorte = 0;
     
-    if (tipo === 'debito' || tipo === 'credito') {
-        digitos = document.getElementById('cuDigitos').value || "";
-    }
+    if (tipo === 'debito' || tipo === 'credito') { digitos = document.getElementById('cuDigitos').value || ""; }
+    if (tipo === 'credito') { limite = parseFloat(document.getElementById('cuLimite').value) || 0; diaPago = parseInt(document.getElementById('cuPago').value) || 0; diaCorte = parseInt(document.getElementById('cuCorte').value) || 0; }
     
-    if (tipo === 'credito') {
-        limite = parseFloat(document.getElementById('cuLimite').value) || 0;
-        diaPago = parseInt(document.getElementById('cuPago').value) || 0;
-        diaCorte = parseInt(document.getElementById('cuCorte').value) || 0;
-    }
-    
-    // Validar si la cuenta ya existe para no borrarle el icono manual o el estado de pago
     const cExistente = state.cuentas.find(x => x.id == id);
     const mesPagadoActual = cExistente ? cExistente.mesPagado : null;
     const iconoActual = cExistente ? cExistente.icon : getBankLogo(b);
     
-    let dataGuardar = {
-        id: id, 
-        nombre: document.getElementById('cuNombre').value, 
-        banco: b, 
-        tipo: tipo, 
-        saldo: parseFloat(document.getElementById('cuSaldo').value) || 0, 
-        limite: limite, 
-        digitos: digitos,
-        diaPago: diaPago,
-        diaCorte: diaCorte,
-        icon: iconoActual
-    };
+    let dataGuardar = { id: id, nombre: document.getElementById('cuNombre').value, banco: b, tipo: tipo, saldo: parseFloat(document.getElementById('cuSaldo').value) || 0, limite: limite, digitos: digitos, diaPago: diaPago, diaCorte: diaCorte, icon: iconoActual };
+    if (mesPagadoActual !== null && mesPagadoActual !== undefined) dataGuardar.mesPagado = mesPagadoActual;
 
-    if (mesPagadoActual !== null && mesPagadoActual !== undefined) {
-        dataGuardar.mesPagado = mesPagadoActual;
-    }
-
-    db.ref(`Usuarios/${auth.currentUser.uid}/cuentas/${id}`).set(dataGuardar).then(() => {
-        alert(currentCuentaEditId ? "Cuenta actualizada" : "Cuenta añadida");
-        cancelarEdicionCuenta();
-    });
+    db.ref(`Usuarios/${auth.currentUser.uid}/cuentas/${id}`).set(dataGuardar).then(() => { alert(currentCuentaEditId ? "Cuenta actualizada" : "Cuenta añadida"); cancelarEdicionCuenta(); });
 }
 
 function handleGuardarPerfil(e) { 
     e.preventDefault(); 
-    db.ref(`Usuarios/${auth.currentUser.uid}/perfil`).set({ 
-        nombre: document.getElementById('perfNombre').value, 
-        foto: state.currentBase64 || document.getElementById('perfDisplayFoto').src, 
-        color: state.selectedColor 
-    }).then(() => { 
-        alert("Perfil actualizado"); 
-        cambiarTab('resumen'); 
-    }); 
+    db.ref(`Usuarios/${auth.currentUser.uid}/perfil`).set({ nombre: document.getElementById('perfNombre').value, foto: state.currentBase64 || document.getElementById('perfDisplayFoto').src, color: state.selectedColor }).then(() => { alert("Perfil actualizado"); cambiarTab('resumen'); }); 
 }
 
-// 10. MÓDULO: PRESUPUESTOS
+// 10. MÓDULO: PRESUPUESTOS Y EXPORTACIÓN PDF
 let chartPresupuestoInstance = null;
 
-function handleGuardarPresupuesto(e) {
-    e.preventDefault(); 
-    const presupuestos = { 
-        Comida: parseFloat(document.getElementById('presComida').value) || 0, 
-        Servicios: parseFloat(document.getElementById('presServicios').value) || 0, 
-        Transporte: parseFloat(document.getElementById('presTransporte').value) || 0, 
-        Vivienda: parseFloat(document.getElementById('presVivienda').value) || 0, 
-        Ocio: parseFloat(document.getElementById('presOcio').value) || 0, 
-        Otros: parseFloat(document.getElementById('presOtros').value) || 0 
-    };
-    
-    db.ref(`Usuarios/${auth.currentUser.uid}/presupuestos`).set(presupuestos).then(() => { 
-        alert("¡Presupuesto actualizado!"); 
-    }); 
-}
+function handleGuardarPresupuesto(e) { e.preventDefault(); const presupuestos = { Comida: parseFloat(document.getElementById('presComida').value) || 0, Servicios: parseFloat(document.getElementById('presServicios').value) || 0, Transporte: parseFloat(document.getElementById('presTransporte').value) || 0, Vivienda: parseFloat(document.getElementById('presVivienda').value) || 0, Ocio: parseFloat(document.getElementById('presOcio').value) || 0, Otros: parseFloat(document.getElementById('presOtros').value) || 0 }; db.ref(`Usuarios/${auth.currentUser.uid}/presupuestos`).set(presupuestos).then(() => alert("¡Presupuesto actualizado!")); }
 
 function renderPresupuestos() {
     try {
         const cats = ['Comida', 'Servicios', 'Transporte', 'Vivienda', 'Ocio', 'Otros'];
+        cats.forEach(c => { if(document.getElementById(`pres${c}`)) document.getElementById(`pres${c}`).value = state.presupuestos[c] || ''; });
         
-        cats.forEach(c => { 
-            if(document.getElementById(`pres${c}`)) {
-                document.getElementById(`pres${c}`).value = state.presupuestos[c] || ''; 
-            }
-        });
-        
-        const hoy = new Date(); 
-        const prefijoMes = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
+        const hoy = new Date(); const prefijoMes = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`;
         const txMes = state.transacciones.filter(t => t.tipo === 'gasto' && t.fecha && t.fecha.startsWith(prefijoMes));
         
-        let gastosPorCat = {}; 
-        cats.forEach(c => gastosPorCat[c] = 0);
+        let gastosPorCat = {}; cats.forEach(c => gastosPorCat[c] = 0);
+        txMes.forEach(t => { let cat = t.cat || 'Otros'; let monto = Number(t.monto) || 0; if(gastosPorCat[cat] !== undefined) { gastosPorCat[cat] += monto; } else { gastosPorCat['Otros'] += monto; } });
         
-        txMes.forEach(t => { 
-            let cat = t.cat || 'Otros'; 
-            let monto = Number(t.monto) || 0; 
-            
-            if(gastosPorCat[cat] !== undefined) {
-                gastosPorCat[cat] += monto; 
-            } else {
-                gastosPorCat['Otros'] += monto;
-            }
-        });
-        
-        let html = ""; 
-        let labels = []; 
-        let dataLims = []; 
-        let dataGastos = []; 
-        let bgColors = []; 
-        let totalLimite = 0; 
-        let totalGastado = 0;
+        let html = ""; let labels = []; let dataLims = []; let dataGastos = []; let bgColors = []; let totalLimite = 0; let totalGastado = 0;
         
         cats.forEach(c => {
-            let limite = Number(state.presupuestos[c]) || 0; 
-            let gastado = Number(gastosPorCat[c]) || 0;
-            
+            let limite = Number(state.presupuestos[c]) || 0; let gastado = Number(gastosPorCat[c]) || 0;
             if(limite > 0 || gastado > 0) {
-                totalLimite += limite; 
-                totalGastado += gastado;
-                
-                let porcentaje = limite > 0 ? (gastado / limite) * 100 : 100; 
-                let colorBarra = porcentaje > 100 ? 'var(--danger)' : (porcentaje > 80 ? '#f59e0b' : 'var(--primary)');
-                
+                totalLimite += limite; totalGastado += gastado;
+                let porcentaje = limite > 0 ? (gastado / limite) * 100 : 100; let colorBarra = porcentaje > 100 ? 'var(--danger)' : (porcentaje > 80 ? '#f59e0b' : 'var(--primary)');
                 html += `<div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; font-size:12px;"><b style="text-transform:uppercase;">${c}</b><span style="color:${porcentaje > 100 ? 'var(--danger)' : 'var(--text)'}; font-weight:bold;">$${gastado.toLocaleString('es-MX', {minimumFractionDigits: 2})} / $${limite.toLocaleString('es-MX', {minimumFractionDigits: 2})}</span></div><div style="background:var(--line); height:10px; border-radius:5px; margin-top:5px; overflow:hidden;"><div style="background:${colorBarra}; width:${Math.min(porcentaje, 100)}%; height:100%; transition: width 0.5s ease-out;"></div></div></div>`;
-                
-                labels.push(c); 
-                dataLims.push(limite); 
-                dataGastos.push(gastado); 
-                bgColors.push(colorBarra);
+                labels.push(c); dataLims.push(limite); dataGastos.push(gastado); bgColors.push(colorBarra);
             }
         });
         
         if (totalLimite > 0 || totalGastado > 0) {
-            let totalPorcentaje = totalLimite > 0 ? (totalGastado / totalLimite) * 100 : 100; 
-            let totalColor = totalPorcentaje > 100 ? 'var(--danger)' : (totalPorcentaje > 80 ? '#f59e0b' : 'var(--primary)');
-            
-            let headerTotal = `<div style="background: var(--bg); padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--line); text-align: center;"><p style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Presupuesto Global del Mes</p><h3 style="color: ${totalColor}; margin-bottom: 5px;">$${totalGastado.toLocaleString('es-MX', {minimumFractionDigits: 2})} <span style="font-size: 14px; color: var(--text);">/ $${totalLimite.toLocaleString('es-MX', {minimumFractionDigits: 2})}</span></h3><div style="background:var(--line); height:8px; border-radius:4px; overflow:hidden; width: 80%; margin: 0 auto;"><div style="background:${totalColor}; width:${Math.min(totalPorcentaje, 100)}%; height:100%; transition: width 0.5s ease-out;"></div></div></div>`;
-            html = headerTotal + html;
+            let totalPorcentaje = totalLimite > 0 ? (totalGastado / totalLimite) * 100 : 100; let totalColor = totalPorcentaje > 100 ? 'var(--danger)' : (totalPorcentaje > 80 ? '#f59e0b' : 'var(--primary)');
+            html = `<div style="background: var(--bg); padding: 15px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--line); text-align: center;"><p style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Presupuesto Global del Mes</p><h3 style="color: ${totalColor}; margin-bottom: 5px;">$${totalGastado.toLocaleString('es-MX', {minimumFractionDigits: 2})} <span style="font-size: 14px; color: var(--text);">/ $${totalLimite.toLocaleString('es-MX', {minimumFractionDigits: 2})}</span></h3><div style="background:var(--line); height:8px; border-radius:4px; overflow:hidden; width: 80%; margin: 0 auto;"><div style="background:${totalColor}; width:${Math.min(totalPorcentaje, 100)}%; height:100%; transition: width 0.5s ease-out;"></div></div></div>` + html;
         }
         
-        if(document.getElementById('listaPresupuestos')) {
-            document.getElementById('listaPresupuestos').innerHTML = html || "<p style='font-size:12px; color:var(--muted); text-align:center;'>Define tus topes arriba para empezar a medirte.</p>";
-        }
+        if(document.getElementById('listaPresupuestos')) document.getElementById('listaPresupuestos').innerHTML = html || "<p style='font-size:12px; color:var(--muted); text-align:center;'>Define tus topes arriba para empezar a medirte.</p>";
         
-        const ctx = document.getElementById('chartPresupuesto'); 
-        if(!ctx) return; 
-        
+        const ctx = document.getElementById('chartPresupuesto'); if(!ctx) return; 
         if(chartPresupuestoInstance) chartPresupuestoInstance.destroy();
-        
-        chartPresupuestoInstance = new Chart(ctx.getContext('2d'), { 
-            type: 'bar', 
-            data: { 
-                labels: labels, 
-                datasets: [ 
-                    { label: 'Lo que has gastado', data: dataGastos, backgroundColor: bgColors, borderRadius: 6 }, 
-                    { label: 'Tu Límite', data: dataLims, backgroundColor: '#cbd5e1', borderRadius: 6 } 
-                ] 
-            }, 
-            options: { 
-                maintainAspectRatio: false, 
-                scales: { 
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }, 
-                    x: { grid: { display: false } } 
-                }, 
-                plugins: { 
-                    legend: { position: 'bottom', labels: { boxWidth: 12 } } 
-                } 
-            } 
-        });
-    } catch (error) { 
-        console.error("Error al renderizar los presupuestos: ", error); 
-    }
+        chartPresupuestoInstance = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [ { label: 'Lo que has gastado', data: dataGastos, backgroundColor: bgColors, borderRadius: 6 }, { label: 'Tu Límite', data: dataLims, backgroundColor: '#cbd5e1', borderRadius: 6 } ] }, options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }, x: { grid: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } });
+    } catch (error) { console.error("Error al renderizar los presupuestos: ", error); }
 }
 
-// 11. GENERADOR DE PDF MENSUAL
 async function generarPDFMes() {
-    if (!window.jspdf) { 
-        alert("Cargando librerías..."); 
-        return; 
-    }
-    
+    if (!window.jspdf) { alert("Cargando librerías..."); return; }
     if(document.getElementById('loader')) document.getElementById('loader').style.display = 'flex';
-    
     try {
-        const { jsPDF } = window.jspdf; 
-        const doc = new jsPDF({ putOnlyUsedFonts: true, orientation: "portrait" });
-        
+        const { jsPDF } = window.jspdf; const doc = new jsPDF({ putOnlyUsedFonts: true, orientation: "portrait" });
         const limpiarTexto = (txt) => txt ? txt.replace(/[^\x00-\x7F\xC0-\xFF]/g, '').trim() : '';
         const selectorMes = document.getElementById('mesReporte') ? document.getElementById('mesReporte').value : null;
+        let fechaObjetivo = new Date(); if (selectorMes) { const partes = selectorMes.split('-'); fechaObjetivo = new Date(partes[0], partes[1] - 1, 10); }
         
-        let fechaObjetivo = new Date(); 
-        if (selectorMes) { 
-            const partes = selectorMes.split('-'); 
-            fechaObjetivo = new Date(partes[0], partes[1] - 1, 10); 
-        }
+        const year = fechaObjetivo.getFullYear(); const nombreMes = fechaObjetivo.toLocaleString('es-ES', { month: 'long' }).toUpperCase(); const prefijoMes = `${year}-${(fechaObjetivo.getMonth() + 1).toString().padStart(2, '0')}`;
+        const userName = limpiarTexto(document.getElementById('perfDisplayNombre').innerText); const userPhotoBase64 = document.getElementById('perfDisplayFoto').src;
         
-        const year = fechaObjetivo.getFullYear(); 
-        const nombreMes = fechaObjetivo.toLocaleString('es-ES', { month: 'long' }).toUpperCase(); 
-        const prefijoMes = `${year}-${(fechaObjetivo.getMonth() + 1).toString().padStart(2, '0')}`;
-        
-        const userName = limpiarTexto(document.getElementById('perfDisplayNombre').innerText); 
-        const userPhotoBase64 = document.getElementById('perfDisplayFoto').src;
-        
-        const estiloBody = getComputedStyle(document.body); 
-        let colorPrimarioHex = estiloBody.getPropertyValue('--primary').trim() || "#3b82f6";
-        
-        const hexToRgb = (hex) => { 
-            let c = hex.substring(1).split(''); 
-            if(c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]]; 
-            c = '0x' + c.join(''); 
-            return [(c>>16)&255, (c>>8)&255, c&255]; 
-        };
-        
+        const estiloBody = getComputedStyle(document.body); let colorPrimarioHex = estiloBody.getPropertyValue('--primary').trim() || "#3b82f6";
+        const hexToRgb = (hex) => { let c = hex.substring(1).split(''); if(c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]]; c = '0x' + c.join(''); return [(c>>16)&255, (c>>8)&255, c&255]; };
         const rgbPrimario = hexToRgb(colorPrimarioHex);
-        const txMes = state.transacciones.filter(t => t.fecha && t.fecha.startsWith(prefijoMes)); 
-        let ingMes = 0, gasMes = 0;
         
-        txMes.forEach(t => { 
-            if (t.tipo === 'ingreso') ingMes += Number(t.monto || 0); 
-            else gasMes += Number(t.monto || 0); 
-        });
+        const txMes = state.transacciones.filter(t => t.fecha && t.fecha.startsWith(prefijoMes)); let ingMes = 0, gasMes = 0;
+        txMes.forEach(t => { if (t.tipo === 'ingreso') ingMes += Number(t.monto || 0); else gasMes += Number(t.monto || 0); });
         
-        let activos = 0, deudas = 0; 
-        const cuentasDebito = []; 
-        const cuentasCredito = [];
+        let activos = 0, deudas = 0; const cuentasDebito = []; const cuentasCredito = [];
+        state.cuentas.forEach(c => { if (c.tipo === 'debito' || c.tipo === 'efectivo') { activos += Number(c.saldo || 0); cuentasDebito.push(c); } else { deudas += Number(c.saldo || 0); cuentasCredito.push(c); } });
         
-        state.cuentas.forEach(c => { 
-            if (c.tipo === 'debito' || c.tipo === 'efectivo') { 
-                activos += Number(c.saldo || 0); 
-                cuentasDebito.push(c); 
-            } else { 
-                deudas += Number(c.saldo || 0); 
-                cuentasCredito.push(c); 
-            } 
-        });
+        const patrimonio = activos - deudas; let yPos = 50; 
         
-        const patrimonio = activos - deudas;
-        let yPos = 50; 
+        doc.setTextColor(0); doc.setFontSize(14); doc.setFont(undefined, 'bold'); doc.text("BALANCE GENERAL", 15, yPos); yPos += 5;
+        doc.setFillColor(240, 253, 244); doc.roundedRect(15, yPos, 55, 18, 3, 3, 'F'); doc.setTextColor(16, 185, 129); doc.setFontSize(9); doc.text("ACTIVOS (TENGO)", 18, yPos + 6); doc.setFontSize(12); doc.text(`$${activos.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 18, yPos + 14);
+        doc.setFillColor(254, 242, 242); doc.roundedRect(75, yPos, 55, 18, 3, 3, 'F'); doc.setTextColor(239, 68, 68); doc.setFontSize(9); doc.text("DEUDAS (DEBO)", 78, yPos + 6); doc.setFontSize(12); doc.text(`$${deudas.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 78, yPos + 14);
+        doc.setDrawColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.setFillColor(255, 255, 255); doc.roundedRect(135, yPos, 60, 18, 3, 3, 'FD'); doc.setTextColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.setFontSize(9); doc.text("PATRIMONIO TOTAL", 138, yPos + 6); doc.setFontSize(12); doc.text(`$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 138, yPos + 14); yPos += 22;
         
-        doc.setTextColor(0); 
-        doc.setFontSize(14); 
-        doc.setFont(undefined, 'bold'); 
-        doc.text("BALANCE GENERAL", 15, yPos); 
-        yPos += 5;
-        
-        doc.setFillColor(240, 253, 244); 
-        doc.roundedRect(15, yPos, 55, 18, 3, 3, 'F'); 
-        doc.setTextColor(16, 185, 129); 
-        doc.setFontSize(9); 
-        doc.text("ACTIVOS (TENGO)", 18, yPos + 6); 
-        doc.setFontSize(12); 
-        doc.text(`$${activos.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 18, yPos + 14);
-        
-        doc.setFillColor(254, 242, 242); 
-        doc.roundedRect(75, yPos, 55, 18, 3, 3, 'F'); 
-        doc.setTextColor(239, 68, 68); 
-        doc.setFontSize(9); 
-        doc.text("DEUDAS (DEBO)", 78, yPos + 6); 
-        doc.setFontSize(12); 
-        doc.text(`$${deudas.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 78, yPos + 14);
-        
-        doc.setDrawColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); 
-        doc.setFillColor(255, 255, 255); 
-        doc.roundedRect(135, yPos, 60, 18, 3, 3, 'FD'); 
-        doc.setTextColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); 
-        doc.setFontSize(9); 
-        doc.text("PATRIMONIO TOTAL", 138, yPos + 6); 
-        doc.setFontSize(12); 
-        doc.text(`$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 138, yPos + 14); 
-        yPos += 22;
-        
-        doc.setFillColor(240, 253, 244); 
-        doc.roundedRect(15, yPos, 85, 18, 3, 3, 'F'); 
-        doc.setTextColor(16, 185, 129); 
-        doc.setFontSize(9); 
-        doc.text("INGRESOS DEL MES", 18, yPos + 6); 
-        doc.setFontSize(14); 
-        doc.text(`+ $${ingMes.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 18, yPos + 14);
-        
-        doc.setFillColor(254, 242, 242); 
-        doc.roundedRect(110, yPos, 85, 18, 3, 3, 'F'); 
-        doc.setTextColor(239, 68, 68); 
-        doc.setFontSize(9); 
-        doc.text("GASTOS Y MOVS DEL MES", 113, yPos + 6); 
-        doc.setFontSize(14); 
-        doc.text(`- $${gasMes.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 113, yPos + 14); 
-        yPos += 28;
+        doc.setFillColor(240, 253, 244); doc.roundedRect(15, yPos, 85, 18, 3, 3, 'F'); doc.setTextColor(16, 185, 129); doc.setFontSize(9); doc.text("INGRESOS DEL MES", 18, yPos + 6); doc.setFontSize(14); doc.text(`+ $${ingMes.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 18, yPos + 14);
+        doc.setFillColor(254, 242, 242); doc.roundedRect(110, yPos, 85, 18, 3, 3, 'F'); doc.setTextColor(239, 68, 68); doc.setFontSize(9); doc.text("GASTOS Y MOVS DEL MES", 113, yPos + 6); doc.setFontSize(14); doc.text(`- $${gasMes.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 113, yPos + 14); yPos += 28;
         
         const crearTablaCuentas = (titulo, datos, totalSaldos, startY) => {
-            doc.setTextColor(0); 
-            doc.setFontSize(13); 
-            doc.setFont(undefined, 'bold'); 
-            doc.text(titulo, 15, startY);
-            
-            const bodyCuentas = datos.map(c => [ 
-                limpiarTexto(c.nombre) || 'Cuenta', 
-                limpiarTexto(c.banco || 'N/A').toUpperCase(), 
-                `$${Number(c.saldo || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}` 
-            ]);
-            
-            if (bodyCuentas.length === 0) { 
-                bodyCuentas.push(['-', 'NO HAY CUENTAS', '$0.00']); 
-            }
-            
-            bodyCuentas.push([ 
-                { content: 'TOTAL', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }, 
-                { content: `$${totalSaldos.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } 
-            ]);
-            
-            doc.autoTable({ 
-                startY: startY + 4, 
-                head: [['Cuenta', 'Institución', 'Saldo']], 
-                body: bodyCuentas, 
-                theme: 'striped', 
-                headStyles: { fillColor: rgbPrimario, textColor: [255, 255, 255], fontStyle: 'bold' }, 
-                styles: { valign: 'middle', fontSize: 9 }, 
-                columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }, 
-                margin: { top: 45, bottom: 25 } 
-            });
-            
+            doc.setTextColor(0); doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text(titulo, 15, startY);
+            const bodyCuentas = datos.map(c => [ limpiarTexto(c.nombre) || 'Cuenta', limpiarTexto(c.banco || 'N/A').toUpperCase(), `$${Number(c.saldo || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}` ]);
+            if (bodyCuentas.length === 0) { bodyCuentas.push(['-', 'NO HAY CUENTAS', '$0.00']); }
+            bodyCuentas.push([ { content: 'TOTAL', colSpan: 2, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: `$${totalSaldos.toLocaleString('es-MX', {minimumFractionDigits: 2})}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } ]);
+            doc.autoTable({ startY: startY + 4, head: [['Cuenta', 'Institución', 'Saldo']], body: bodyCuentas, theme: 'striped', headStyles: { fillColor: rgbPrimario, textColor: [255, 255, 255], fontStyle: 'bold' }, styles: { valign: 'middle', fontSize: 9 }, columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } }, margin: { top: 45, bottom: 25 } });
             return doc.lastAutoTable.finalY + 12;
         };
         
         yPos = crearTablaCuentas("CUENTAS DE DÉBITO Y EFECTIVO (ACTIVOS)", cuentasDebito, activos, yPos); 
         yPos = crearTablaCuentas("CUENTAS DE CRÉDITO Y TDC (DEUDAS)", cuentasCredito, deudas, yPos);
         
-        if(yPos > doc.internal.pageSize.height - 40) { 
-            doc.addPage(); 
-            yPos = 55; 
-        }
+        if(yPos > doc.internal.pageSize.height - 40) { doc.addPage(); yPos = 55; }
         
-        doc.setTextColor(0); 
-        doc.setFontSize(13); 
-        doc.setFont(undefined, 'bold'); 
-        doc.text(`DETALLE DE MOVIMIENTOS - ${nombreMes}`, 15, yPos);
-        
+        doc.setTextColor(0); doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text(`DETALLE DE MOVIMIENTOS - ${nombreMes}`, 15, yPos);
         const bodyMovs = txMes.map(t => { 
-            let catDisplay = limpiarTexto(t.cat || 'Ingreso'); 
-            if(t.tipo === 'movimiento') catDisplay = t.subtipo === 'pago' ? 'PAGO TDC' : 'TRASPASO'; 
-            
-            const esIngreso = t.tipo === 'ingreso'; 
-            
-            return [ 
-                t.fecha, 
-                catDisplay.toUpperCase(), 
-                limpiarTexto(t.desc) || 'Sin detalle', 
-                { 
-                    content: `${esIngreso ? '+' : '-'} $${Number(t.monto || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}`, 
-                    styles: { textColor: esIngreso ? [16, 185, 129] : [239, 68, 68], fontStyle: 'bold' } 
-                } 
-            ]; 
+            let catDisplay = limpiarTexto(t.cat || 'Ingreso'); if(t.tipo === 'movimiento') catDisplay = t.subtipo === 'pago' ? 'PAGO TDC' : 'TRASPASO'; const esIngreso = t.tipo === 'ingreso'; 
+            return [ t.fecha, catDisplay.toUpperCase(), limpiarTexto(t.desc) || 'Sin detalle', { content: `${esIngreso ? '+' : '-'} $${Number(t.monto || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}`, styles: { textColor: esIngreso ? [16, 185, 129] : [239, 68, 68], fontStyle: 'bold' } } ]; 
         });
+        if (bodyMovs.length === 0) { bodyMovs.push(['-', 'SIN MOVIMIENTOS ESTE MES', '-', '$0.00']); }
+        bodyMovs.push([ { content: 'BALANCE DEL MES (INGRESOS - GASTOS)', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }, { content: `$${(ingMes - gasMes).toLocaleString('es-MX', {minimumFractionDigits: 2})}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } ]);
         
-        if (bodyMovs.length === 0) { 
-            bodyMovs.push(['-', 'SIN MOVIMIENTOS ESTE MES', '-', '$0.00']); 
-        }
-        
-        bodyMovs.push([ 
-            { content: 'BALANCE DEL MES (INGRESOS - GASTOS)', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }, 
-            { content: `$${(ingMes - gasMes).toLocaleString('es-MX', {minimumFractionDigits: 2})}`, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } } 
-        ]);
-        
-        doc.autoTable({ 
-            startY: yPos + 4, 
-            head: [['Fecha', 'Categoría', 'Concepto', 'Monto']], 
-            body: bodyMovs, 
-            theme: 'grid', 
-            headStyles: { fillColor: rgbPrimario, textColor: [255, 255, 255], fontStyle: 'bold' }, 
-            styles: { valign: 'middle', fontSize: 8 }, 
-            columnStyles: { 3: { halign: 'right' } }, 
-            margin: { top: 45, bottom: 25 } 
-        });
+        doc.autoTable({ startY: yPos + 4, head: [['Fecha', 'Categoría', 'Concepto', 'Monto']], body: bodyMovs, theme: 'grid', headStyles: { fillColor: rgbPrimario, textColor: [255, 255, 255], fontStyle: 'bold' }, styles: { valign: 'middle', fontSize: 8 }, columnStyles: { 3: { halign: 'right' } }, margin: { top: 45, bottom: 25 } });
         
         const pageCount = doc.internal.getNumberOfPages();
         for(let i = 1; i <= pageCount; i++) {
-            doc.setPage(i); 
-            doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); 
-            doc.rect(0, 0, 210, 40, 'F'); 
-            
-            doc.setTextColor(255, 255, 255); 
-            doc.setFontSize(10); 
-            doc.setFont(undefined, 'normal'); 
-            doc.text("ESTADO DE CUENTA MÓVIL", 45, 15); 
-            doc.setFontSize(20); 
-            doc.setFont(undefined, 'bold'); 
-            doc.text(userName.toUpperCase(), 45, 23); 
-            doc.setFontSize(10); 
-            doc.setFont(undefined, 'normal'); 
-            doc.text(`Período reportado: ${nombreMes} ${year}`, 45, 30);
-            
-            if (i === 1) { 
-                try { 
-                    if(userPhotoBase64 && userPhotoBase64.startsWith('data:image')) { 
-                        doc.addImage(userPhotoBase64, 'JPEG', 15, 8, 24, 24, 'perfil', 'FAST'); 
-                    } 
-                } catch(e) {} 
-            }
-            
-            const pageHeight = doc.internal.pageSize.height; 
-            doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); 
-            doc.rect(0, pageHeight - 15, 210, 15, 'F'); 
-            doc.setTextColor(255, 255, 255); 
-            doc.setFontSize(8); 
-            doc.text(`Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 15, pageHeight - 6); 
-            doc.text(`Página ${i} de ${pageCount}`, 195, pageHeight - 6, { align: 'right' });
+            doc.setPage(i); doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.rect(0, 0, 210, 40, 'F'); 
+            doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.text("ESTADO DE CUENTA MÓVIL", 45, 15); doc.setFontSize(20); doc.setFont(undefined, 'bold'); doc.text(userName.toUpperCase(), 45, 23); doc.setFontSize(10); doc.setFont(undefined, 'normal'); doc.text(`Período reportado: ${nombreMes} ${year}`, 45, 30);
+            if (i === 1) { try { if(userPhotoBase64 && userPhotoBase64.startsWith('data:image')) { doc.addImage(userPhotoBase64, 'JPEG', 15, 8, 24, 24, 'perfil', 'FAST'); } } catch(e) {} }
+            const pageHeight = doc.internal.pageSize.height; doc.setFillColor(rgbPrimario[0], rgbPrimario[1], rgbPrimario[2]); doc.rect(0, pageHeight - 15, 210, 15, 'F'); doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.text(`Generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 15, pageHeight - 6); doc.text(`Página ${i} de ${pageCount}`, 195, pageHeight - 6, { align: 'right' });
         }
         
-        const nombreArchivo = `EstadoCuenta_${limpiarTexto(nombreMes)}_${year}.pdf`; 
-        doc.save(nombreArchivo);
-        
-    } catch (error) { 
-        alert("Ocurrió un problema al generar el reporte: " + error.message); 
-    } finally { 
-        if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; 
-    }
+        doc.save(`EstadoCuenta_${limpiarTexto(nombreMes)}_${year}.pdf`);
+    } catch (error) { alert("Ocurrió un problema al generar el reporte: " + error.message); } finally { if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; }
 }
 
-if ('serviceWorker' in navigator) { 
-    navigator.serviceWorker.register('./sw.js'); 
-}
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }

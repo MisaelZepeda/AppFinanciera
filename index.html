@@ -83,14 +83,29 @@
         <main class="main-content" onclick="closeDropdowns()">
             <!-- RESUMEN -->
             <section id="tab-resumen" class="tab-content active">
-                <div class="card" style="background: var(--primary); color: white; border: none;">
-                    <p style="margin:0; font-size:12px; opacity:0.8;">PATRIMONIO NETO</p>
-                    <h1 id="valPatrimonio" style="margin:5px 0;">$0.00</h1>
-                    <div style="display:flex; justify-content:space-between; margin-top:15px; font-size:14px;">
-                        <div><small style="opacity:0.8;">Activos</small><br><b id="valTengo">$0.00</b></div>
-                        <div style="text-align:right;"><small style="opacity:0.8;">Deudas</small><br><b id="valDebo">$0.00</b></div>
+                
+                <!-- NUEVA TARJETA DE PATRIMONIO PREMIUM -->
+                <div class="card patrimonio-card">
+                    <div class="patrimonio-content">
+                        <p class="pat-subtitle">PATRIMONIO TOTAL</p>
+                        <h1 id="valPatrimonio" style="margin: 5px 0 10px 0; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">$0.00</h1>
+                        <p class="pat-message">Mantienes buen ritmo financiero mensual.</p>
+                        <div class="pat-bottom">
+                            <div>
+                                <small style="opacity: 0.8;">Activos</small><br>
+                                <b id="valTengo" style="font-size: 15px;">$0.00</b>
+                            </div>
+                            <div style="text-align: right;">
+                                <small style="opacity: 0.8;">Deudas</small><br>
+                                <b id="valDebo" style="font-size: 15px;">$0.00</b>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="patrimonio-chart-container">
+                        <canvas id="chartPatrimonio"></canvas>
                     </div>
                 </div>
+
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
                     <div class="card" style="margin:0;">
                         <small style="color:var(--success); font-weight:bold;">+ INGRESOS (MES)</small>
@@ -101,23 +116,27 @@
                         <h3 id="homeGastos" style="margin:5px 0 0 0;">$0.00</h3>
                     </div>
                 </div>
-                <div class="card">
-                    <h4>Distribución de Gastos</h4>
-                    <div style="height: 200px; margin-top: 15px;"><canvas id="chartGastos"></canvas></div>
-                </div>
+                
+                <!-- TARJETAS CON CARRUSEL HORIZONTAL -->
                 <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
                     <h4 style="margin-bottom: 15px;">Mis Cuentas y Tarjetas</h4>
                     <div style="display:flex; flex-direction: column; gap:20px;">
                         <div>
                             <small style="color:var(--muted); font-weight:bold; border-bottom: 2px solid var(--primary); padding-bottom: 3px; display: block; margin-bottom: 15px;">DÉBITO / EFECTIVO</small>
-                            <div id="widgetDebitos" class="tarjetas-grid"></div>
+                            <div id="widgetDebitos" class="tarjetas-slider"></div>
                         </div>
                         <div>
                             <small style="color:var(--muted); font-weight:bold; border-bottom: 2px solid var(--danger); padding-bottom: 3px; display: block; margin-bottom: 15px;">CRÉDITO</small>
-                            <div id="widgetCreditos" class="tarjetas-grid"></div>
+                            <div id="widgetCreditos" class="tarjetas-slider"></div>
                         </div>
                     </div>
                 </div>
+
+                <div class="card">
+                    <h4>Distribución de Gastos</h4>
+                    <div style="height: 200px; margin-top: 15px;"><canvas id="chartGastos"></canvas></div>
+                </div>
+                
                 <div class="card" style="margin-top: 20px;">
                     <h4 style="color: var(--primary);">📄 Generar Reporte PDF</h4>
                     <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Descarga tu Estado de Cuenta mensual limpio.</p>
@@ -207,7 +226,7 @@
                 <div class="card"><h4>Historial de Movimientos</h4><div id="listaMovimientos"></div></div>
             </section>
 
-            <!-- CUENTAS (ACTUALIZADO CON VALIDACIÓN Y EDICIÓN) -->
+            <!-- CUENTAS -->
             <section id="tab-cuentas" class="tab-content">
                 <div class="card">
                     <h3 id="cuentaFormTitle">Registrar Cuenta</h3>
@@ -243,6 +262,7 @@
                 </div>
                 <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
                     <h4 style="margin-bottom: 15px;">Mis Cuentas</h4>
+                    <!-- Aquí sigue en lista vertical para mejor gestión -->
                     <div id="listaMaestraCuentas" class="tarjetas-grid"></div>
                 </div>
             </section>
