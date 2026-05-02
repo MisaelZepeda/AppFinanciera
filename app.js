@@ -18,6 +18,41 @@ const categoriasBase = ['Comida', 'Servicios', 'Transporte', 'Vivienda', 'Ocio',
 let chartInstance = null; let chartPatrimonioInstance = null; let chartPresupuestosGrid = []; 
 let currentEditId = null; let currentCuentaEditId = null; let currentMovMode = 'pago';
 
+// --- FRASES MOTIVACIONALES ---
+const frasesFinancieras = [
+    "Ser bueno con el dinero no significa acumularlo, sino saber cuándo dejarlo ir.",
+    "El dinero es una herramienta, no el destino final.",
+    "Cuida tus pequeños gastos; un pequeño agujero hunde un gran barco.",
+    "Una meta sin un plan es solo un deseo",
+    "No ahorres lo que te sobra, gasta lo que te queda después de ahorrar.",
+    "Invierte en ti hoy, el interés compuesto hará el resto.",
+    "El presupuesto es decirle a tu dinero a dónde ir, en lugar de preguntarte a dónde fue.",
+    "La paciencia y la disciplina son los mejores activos de tu portafolio.",
+    "Controla tu dinero o él te controlará a ti."
+];
+
+function rotarFrase() {
+    const el = document.getElementById('fraseMotivadora');
+    if(el) el.innerText = frasesFinancieras[Math.floor(Math.random() * frasesFinancieras.length)];
+}
+
+// --- LOGICA PWA (INSTALACIÓN) ---
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btnInstall = document.getElementById('btnInstalarApp');
+    if(btnInstall) btnInstall.style.display = 'block';
+});
+
+document.getElementById('btnInstalarApp')?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('btnInstalarApp').style.display = 'none';
+    deferredPrompt = null;
+});
+
 // --- SISTEMA DE MODALES AUTOMÁTICOS ---
 function mostrarAlerta(titulo, mensaje, tipo = 'success') {
     const overlay = document.getElementById('customModalOverlay');
@@ -28,7 +63,6 @@ function mostrarAlerta(titulo, mensaje, tipo = 'success') {
     document.getElementById('cmTitle').innerText = titulo;
     document.getElementById('cmText').innerText = mensaje;
     
-    // Ocultar botones completamente (Notificación Efímera)
     btnsContainer.style.display = 'none';
 
     if (tipo === 'success') {
@@ -41,10 +75,8 @@ function mostrarAlerta(titulo, mensaje, tipo = 'success') {
     
     overlay.style.display = 'flex';
 
-    // Se cierra sola a los 1200 ms
     setTimeout(() => {
         overlay.style.display = 'none';
-        // Restaurar display para cuando se llame una confirmación real
         btnsContainer.style.display = 'flex'; 
     }, 1200); 
 }
@@ -67,7 +99,7 @@ function mostrarConfirmacion(titulo, mensaje, callback) {
     btnConfirm.innerText = "Confirmar";
     btnConfirm.onclick = () => { overlay.style.display = 'none'; callback(); };
 
-    iconWrapper.style.background = '#f59e0b'; // Naranja/Warning
+    iconWrapper.style.background = '#f59e0b';
     btnConfirm.style.background = '#f59e0b';
     icon.innerText = '⚠️';
     
@@ -98,17 +130,14 @@ function mostrarPromptCard(titulo, mensaje, callback) {
 // --- DICCIONARIO DE TRADUCCIÓN DE ERRORES FIREBASE ---
 function translateAuthError(code) {
     const dictionary = {
-        'auth/user-not-found': 'Este correo no está registrado en el sistema. Verifica la escritura.',
-        'auth/wrong-password': 'La contraseña es incorrecta. Inténtalo de nuevo.',
+        'auth/user-not-found': 'Este correo no está registrado en el sistema.',
+        'auth/wrong-password': 'La contraseña es incorrecta.',
         'auth/invalid-credential': 'El correo o la contraseña son incorrectos.',
         'auth/invalid-email': 'El formato del correo electrónico no es válido.',
         'auth/email-already-in-use': 'Ya existe una cuenta registrada con este correo.',
         'auth/weak-password': 'La contraseña es muy débil. Debe tener al menos 6 caracteres.',
-        'auth/internal-error': 'Error interno de conexión. Revisa tu internet e intenta de nuevo.',
-        'auth/network-request-failed': 'No hay conexión a internet. Verifica tu red.',
-        'auth/too-many-requests': 'Demasiados intentos fallidos. Por seguridad, espera unos minutos.',
-        'auth/user-disabled': 'Esta cuenta ha sido suspendida por el administrador.',
-        'auth/operation-not-allowed': 'El inicio de sesión está deshabilitado temporalmente.'
+        'auth/internal-error': 'Error interno de conexión. Revisa tu internet.',
+        'auth/network-request-failed': 'No hay conexión a internet. Verifica tu red.'
     };
     return dictionary[code] || 'Ocurrió un error inesperado. Intenta de nuevo.';
 }
@@ -143,10 +172,6 @@ function importarBackup(event) {
 
 const centerTextPlugin = { id: 'centerText', beforeDraw: function(chart) { if (chart.config.options.plugins.centerText && chart.config.options.plugins.centerText.display) { let ctx = chart.ctx; let chartArea = chart.chartArea; if(!chartArea) return; ctx.restore(); let centerX = chartArea.left + (chartArea.right - chartArea.left) / 2; let yCenter = chartArea.top + (chartArea.bottom - chartArea.top) / 2; let fontSize = (chart.height / 150).toFixed(2); ctx.textBaseline = "middle"; let textTop = chart.config.options.plugins.centerText.title || "TOTAL"; let textBottom = chart.config.options.plugins.centerText.text; ctx.font = "bold " + (fontSize*0.4) + "em sans-serif"; ctx.fillStyle = "gray"; ctx.fillText(textTop, centerX - (ctx.measureText(textTop).width / 2), yCenter - 15); ctx.font = "900 " + (fontSize*0.9) + "em sans-serif"; ctx.fillStyle = document.body.getAttribute('data-theme') === 'dark' ? '#fff' : '#1e293b'; ctx.fillText(textBottom, centerX - (ctx.measureText(textBottom).width / 2), yCenter + 15); ctx.save(); } } }; Chart.register(centerTextPlugin);
 
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION); let inactivityTimer;
-function resetTimer() { clearTimeout(inactivityTimer); if(auth.currentUser) { inactivityTimer = setTimeout(() => { auth.signOut().then(() => window.location.reload()); }, 15 * 60 * 1000); } }
-window.onload = resetTimer; document.onmousemove = resetTimer; document.onkeypress = resetTimer; document.ontouchstart = resetTimer;
-
 function comprimirImagen(file, callback) { const reader = new FileReader(); reader.onload = function(event) { const img = new Image(); img.onload = function() { const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const MAX_SIZE = 300; let width = img.width; let height = img.height; if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } } canvas.width = width; canvas.height = height; ctx.drawImage(img, 0, 0, width, height); callback(canvas.toDataURL('image/jpeg', 0.7)); }; img.src = event.target.result; }; reader.readAsDataURL(file); }
 
 let regBase64 = ""; if(document.getElementById('regFoto')) document.getElementById('regFoto').addEventListener('change', function(e) { if(e.target.files[0]) comprimirImagen(e.target.files[0], (base64) => { regBase64 = base64; }); }); if(document.getElementById('perfFile')) document.getElementById('perfFile').addEventListener('change', function(e) { if(e.target.files[0]) comprimirImagen(e.target.files[0], (base64) => { state.currentBase64 = base64; document.getElementById('perfDisplayFoto').src = base64; }); });
@@ -154,27 +179,35 @@ let regBase64 = ""; if(document.getElementById('regFoto')) document.getElementBy
 function toggleAuthForm(type) { document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none'; document.getElementById('registerForm').style.display = type === 'register' ? 'block' : 'none'; document.getElementById('resetForm').style.display = type === 'reset' ? 'block' : 'none'; }
 
 function handleLogin() { 
-    auth.signInWithEmailAndPassword(document.getElementById('logEmail').value, document.getElementById('logPass').value)
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+        return auth.signInWithEmailAndPassword(document.getElementById('logEmail').value, document.getElementById('logPass').value);
+    })
     .catch(e => mostrarAlerta("Error de Acceso", translateAuthError(e.code), "error")); 
 }
 
 function handleRegistro() {
     const email = document.getElementById('regEmail').value; const pass = document.getElementById('regPass').value; const nombre = document.getElementById('regNombre').value;
     if(!nombre) { mostrarAlerta("Atención", "El nombre es obligatorio", "error"); return; }
-    auth.createUserWithEmailAndPassword(email, pass).then((cred) => {
+    
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .then(() => {
+        return auth.createUserWithEmailAndPassword(email, pass);
+    })
+    .then((cred) => {
         const defaultPic = `https://ui-avatars.com/api/?name=${encodeURIComponent(nombre)}&background=3b82f6&color=fff&size=128`;
         db.ref(`Usuarios/${cred.user.uid}/perfil`).set({ nombre: nombre, foto: regBase64 || defaultPic, color: "#3b82f6" }).then(() => mostrarAlerta("¡Éxito!", "Cuenta creada. ¡Bienvenido " + nombre + "!", "success"));
     }).catch(e => mostrarAlerta("Error al registrar", translateAuthError(e.code), "error"));
 }
 
-function handleResetPassword() { auth.sendPasswordResetEmail(document.getElementById('resetEmail').value).then(() => { mostrarAlerta("Correo Enviado", "Revisa tu bandeja de entrada para recuperar tu contraseña.", "success"); toggleAuthForm('login'); }).catch(e => mostrarAlerta("Error", translateAuthError(e.code), "error")); }
+function handleResetPassword() { auth.sendPasswordResetEmail(document.getElementById('resetEmail').value).then(() => { mostrarAlerta("Correo Enviado", "Revisa tu bandeja de entrada.", "success"); toggleAuthForm('login'); }).catch(e => mostrarAlerta("Error", translateAuthError(e.code), "error")); }
 function handleLogout() { auth.signOut().then(() => window.location.reload()); }
 
 auth.onAuthStateChanged(user => {
     if (user) {
         document.getElementById('loginScreen').style.display = 'none'; document.getElementById('appDashboard').style.display = 'block';
         if(document.getElementById('loader')) document.getElementById('loader').style.display = 'flex';
-        resetTimer();
+        rotarFrase();
         
         db.ref('Usuarios/' + user.uid).on('value', snap => {
             const data = snap.val() || {};
@@ -195,7 +228,7 @@ auth.onAuthStateChanged(user => {
         });
     } else {
         document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appDashboard').style.display = 'none';
-        if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; clearTimeout(inactivityTimer);
+        if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none';
     }
 });
 
@@ -250,7 +283,7 @@ function revertirTransaccion(fid) {
 window.eliminarTransaccion = function(fid) { 
     mostrarConfirmacion("Eliminar Registro", "¿Seguro que deseas borrar este movimiento y revertir los saldos?", () => {
         let updates = revertirTransaccion(fid); updates[`transacciones/${fid}`] = null; 
-        db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => mostrarAlerta("Eliminado", "Saldos ajustados correctamente.", "success")); 
+        db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => mostrarAlerta("Eliminado", "Saldos ajustados.", "success")); 
     });
 };
 
@@ -274,11 +307,11 @@ window.sumarInteres = function(id) {
 };
 
 window.eliminarUsuario = function() { 
-    mostrarConfirmacion("¡PELIGRO EXTREMO!", "Esto eliminará tu cuenta y TODOS tus datos de forma permanente. No hay marcha atrás. ¿Estás seguro?", () => {
+    mostrarConfirmacion("¡PELIGRO EXTREMO!", "Esto eliminará tu cuenta y TODOS tus datos permanentemente. No hay marcha atrás. ¿Seguro?", () => {
         const user = auth.currentUser; 
         db.ref(`Usuarios/${user.uid}`).remove().then(() => { 
             user.delete().then(() => { window.location.reload(); }).catch(e => mostrarAlerta("Error", "Debes volver a iniciar sesión para hacer esto.", "error")); 
-        }).catch(e => mostrarAlerta("Error", "Fallo al borrar datos: " + e.message, "error"));
+        }).catch(e => mostrarAlerta("Error", "Fallo al borrar datos.", "error"));
     });
 };
 
@@ -302,7 +335,7 @@ function handleIngreso(e) {
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('inCuenta').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     updates[`transacciones/${id}`] = { desc: document.getElementById('inDesc').value, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: oldFecha }; updates[`cuentas/${c.id}/saldo`] = currentSaldo + m;
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; mostrarAlerta("Ingreso Registrado", "Saldo sumado a tu cuenta.", "success"); });
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; mostrarAlerta("Ingreso", "Registrado exitosamente.", "success"); });
 }
 function editIngreso(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('ingresos'); document.getElementById('inDesc').value = t.desc; document.getElementById('inMonto').value = t.monto; document.getElementById('inCuenta').value = t.cuentaId; document.getElementById('inCuenta').disabled = true; currentEditId = fid; document.getElementById('ingresoFormTitle').innerText = "Editando Ingreso"; }
 
@@ -311,7 +344,7 @@ function handleGasto(e) {
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('gaFuente').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     updates[`transacciones/${id}`] = { desc: document.getElementById('gaDesc').value, cat: document.getElementById('gaCat').value, monto: m, tipo: 'gasto', cuentaId: c.id, fecha: oldFecha }; updates[`cuentas/${c.id}/saldo`] = (c.tipo === 'debito' || c.tipo === 'efectivo') ? currentSaldo - m : currentSaldo + m;
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('gaFuente').disabled = false; document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; mostrarAlerta("Gasto Registrado", "Cobro descontado.", "success"); });
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('gaFuente').disabled = false; document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; mostrarAlerta("Gasto", "Cobro descontado.", "success"); });
 }
 function editGasto(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('gastos'); document.getElementById('gaDesc').value = t.desc; document.getElementById('gaMonto').value = t.monto; document.getElementById('gaCat').value = t.cat; document.getElementById('gaFuente').value = t.cuentaId; document.getElementById('gaFuente').disabled = true; currentEditId = fid; document.getElementById('gastoFormTitle').innerText = "Editando Gasto"; }
 
@@ -329,7 +362,6 @@ function handleMovimiento(e) {
 }
 function editMovimiento(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('traspasos'); setMovMode(t.subtipo || 'traspaso'); document.getElementById('movOrigen').value = t.origenId; document.getElementById('movDestino').value = t.destinoId; document.getElementById('movMonto').value = t.monto; document.getElementById('movOrigen').disabled = true; document.getElementById('movDestino').disabled = true; currentEditId = fid; document.getElementById('movTitle').innerText = "Editando Movimiento"; }
 
-// 8. RENDERIZADO VISUAL
 function getBankColorsArray(banco) {
     const b = banco.toLowerCase();
     if (b.includes('nu') || b.includes('klar') || b.includes('stori')) return ['#8b5cf6', '#6d28d9'];
@@ -372,19 +404,14 @@ function renderAll() {
         let finalSrc = c.icon || clearbitUrl;
         let imgTag = `<img src="${finalSrc}" onerror="this.onerror=null; this.src='${uiAvatarsUrl}';" style="width:32px; height:32px; border-radius:50%; background:white; padding:2px; object-fit:contain;">`;
 
-        let floatShareIconSVG = `<div class="tb-share-icon" onclick="generarTarjetaCompartir('${c.id}')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg>
-        </div>`;
-
         const buildCardHtmlContent = (isHome) => {
-            // Movemos la lógica del botón para usarlo en el footer
+            let floatShareIconSVG = `<div class="tb-share-icon" onclick="generarTarjetaCompartir('${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg></div>`;
             let bottomIconHTML = (isHome && c.tipo !== 'credito') ? floatShareIconSVG : '';
             
             return `<div class="tarjeta-bancaria" style="background: ${colorFondo};">
                 <div class="tb-bg-shape tb-shape-1"></div><div class="tb-bg-shape tb-shape-2"></div>
                 <div class="tb-content">
                     <div class="tb-header">
-                        <!-- min-width: 0 evita que el texto largo rompa el contenedor -->
                         <div style="display:flex; align-items:center; gap:10px; min-width: 0;">
                             ${imgTag}
                             <div style="min-width: 0;">
@@ -394,7 +421,6 @@ function renderAll() {
                         </div>
                         <div style="display:flex; align-items:center; gap: 8px; flex-shrink: 0;">
                             <div class="tb-badge">${c.tipo.toUpperCase()}</div>
-                            <!-- El botón ya no está aquí arriba -->
                         </div>
                     </div>
                     <div class="tb-body">
@@ -403,8 +429,6 @@ function renderAll() {
                     </div>
                     <div class="tb-footer">
                         <div><div class="tb-nombre">${c.nombre}</div>${aviso}</div>
-                        
-                        <!-- Colocamos el botón aquí abajo, a la derecha -->
                         <div style="display: flex; align-items: flex-end; gap: 10px;">
                             ${limiteInfo}
                             ${bottomIconHTML}
@@ -541,80 +565,78 @@ window.generarTarjetaCompartir = function(id) {
     canvas.height = 680; 
     const ctx = canvas.getContext('2d');
 
-    const dibujarTarjeta = () => {
-        const arrColores = getBankColorsArray(c.banco);
-        const grad = ctx.createLinearGradient(0, 0, 1080, 680);
-        grad.addColorStop(0, arrColores[0]); 
-        grad.addColorStop(1, arrColores[1]);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 1080, 680);
+    const arrColores = getBankColorsArray(c.banco);
+    const grad = ctx.createLinearGradient(0, 0, 1080, 680);
+    grad.addColorStop(0, arrColores[0]); 
+    grad.addColorStop(1, arrColores[1]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1080, 680);
 
-        ctx.fillStyle = 'rgba(255,255,255,0.04)';
-        ctx.beginPath(); ctx.arc(150, -50, 350, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(950, 650, 250, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath(); ctx.arc(150, -50, 350, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(950, 650, 250, 0, Math.PI*2); ctx.fill();
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(940, 140, 80, 0, Math.PI*2); 
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.restore();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(940, 140, 80, 0, Math.PI*2); 
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+    ctx.restore();
 
-        ctx.fillStyle = arrColores[1];
-        ctx.font = 'bold 100px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(c.banco.charAt(0).toUpperCase(), 940, 145); 
+    ctx.fillStyle = arrColores[1];
+    ctx.font = 'bold 100px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(c.banco.charAt(0).toUpperCase(), 940, 145); 
 
-        const mutedColor = 'rgba(255, 255, 255, 0.75)';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
+    const mutedColor = 'rgba(255, 255, 255, 0.75)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
-        ctx.fillStyle = mutedColor;
-        ctx.font = 'bold 36px sans-serif';
-        ctx.fillText("DATOS DE DEPÓSITO", 70, 120);
+    ctx.fillStyle = mutedColor;
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText("DATOS DE DEPÓSITO", 70, 120);
 
-        ctx.fillStyle = mutedColor;
-        ctx.font = 'bold 24px sans-serif';
-        ctx.fillText("INSTITUCIÓN", 70, 230);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 45px sans-serif';
-        ctx.fillText(c.banco.toUpperCase(), 70, 280);
+    ctx.fillStyle = mutedColor;
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText("INSTITUCIÓN", 70, 230);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 45px sans-serif';
+    ctx.fillText(c.banco.toUpperCase(), 70, 280);
 
-        ctx.fillStyle = mutedColor;
-        ctx.font = 'bold 24px sans-serif';
-        ctx.fillText("BENEFICIARIO", 70, 370);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 45px sans-serif';
-        const titular = document.getElementById('perfDisplayNombre').innerText || "Titular";
-        ctx.fillText(titular.toUpperCase(), 70, 420);
+    ctx.fillStyle = mutedColor;
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText("BENEFICIARIO", 70, 370);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 45px sans-serif';
+    const titular = document.getElementById('perfDisplayNombre').innerText || "Titular";
+    ctx.fillText(titular.toUpperCase(), 70, 420);
 
-        ctx.fillStyle = mutedColor;
-        ctx.font = 'bold 24px sans-serif';
-        ctx.fillText(c.clabe ? "CLABE INTERBANCARIA" : "NÚMERO DE CUENTA / TARJETA", 70, 520);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 55px monospace';
-        
-        let numOriginal = c.clabe || c.digitos || "No registrado";
-        let numFormateado = numOriginal.replace(/(.{4})/g, '$1 ').trim();
-        ctx.fillText(numFormateado, 70, 580);
+    ctx.fillStyle = mutedColor;
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(c.clabe ? "CLABE INTERBANCARIA" : "NÚMERO DE CUENTA / TARJETA", 70, 520);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 55px monospace';
+    
+    let numOriginal = c.clabe || c.digitos || "No registrado";
+    let numFormateado = numOriginal === "No registrado" ? numOriginal : numOriginal.replace(/(.{4})/g, '$1 ').trim();
+    ctx.fillText(numFormateado, 70, 580);
 
-        canvas.toBlob((blob) => {
-            const file = new File([blob], `Datos_${c.banco}.png`, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                navigator.share({ title: `Datos de depósito ${c.banco}`, files: [file] }).catch(e => console.log('Cancelado.'));
-            } else {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Datos_Deposito_${c.banco}.png`;
-                a.click();
-                URL.revokeObjectURL(url);
-                mostrarAlerta("Tarjeta Descargada", "Revisa tus descargas.", "success");
-            }
-        }, 'image/png');
-    };
-    dibujarTarjeta();
+    const dataUrl = canvas.toDataURL('image/png');
+    let arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+    let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+    while(n--) { u8arr[n] = bstr.charCodeAt(n); }
+    const file = new File([u8arr], `Datos_${c.banco}.png`, {type:mime});
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ title: `Datos de depósito ${c.banco}`, files: [file] }).catch(e => console.log('Compartir cancelado.'));
+    } else {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = `Datos_Deposito_${c.banco}.png`;
+        a.click();
+        mostrarAlerta("Tarjeta Descargada", "Revisa tus descargas.", "success");
+    }
 };
 
 async function generarPDFMes() {

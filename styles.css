@@ -117,16 +117,7 @@ input:checked + .slider { background-color: #e2e8f0; } input:checked + .slider:b
 .custom-cat-tag span { color: var(--danger); cursor: pointer; font-size: 14px; }
 .tarjetas-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
 
-/* AQUÍ EL ARREGLO ESTRELLA: Padding interno y margen negativo para un scroll edge-to-edge impecable */
-.tarjetas-slider { 
-    display: flex; 
-    gap: 15px; 
-    overflow-x: auto; 
-    padding: 10px 20px 20px 20px; /* Las tarjetas respetan los 20px de espacio interno del contenedor */
-    margin: 0 -20px; /* Empujamos el slider para que abarque hasta el límite de la tarjeta blanca */
-    scroll-snap-type: x mandatory; 
-    scrollbar-width: none; 
-}
+.tarjetas-slider { display: flex; gap: 15px; overflow-x: auto; padding: 10px 20px 20px 20px; margin: 0 -20px; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .tarjetas-slider::-webkit-scrollbar { display: none; }
 
 .tarjetas-slider .tarjeta-bancaria { min-width: 290px; width: 85vw; max-width: 320px; scroll-snap-align: center; flex-shrink: 0; }
