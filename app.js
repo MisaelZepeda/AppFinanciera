@@ -377,18 +377,24 @@ function renderAll() {
         </div>`;
 
         const buildCardHtmlContent = (isHome) => {
-            let topIconHTML = (isHome && c.tipo === 'debito') ? floatShareIconSVG : '';
+            // Movemos la lógica del botón para usarlo en el footer
+            let bottomIconHTML = (isHome && c.tipo !== 'credito') ? floatShareIconSVG : '';
+            
             return `<div class="tarjeta-bancaria" style="background: ${colorFondo};">
                 <div class="tb-bg-shape tb-shape-1"></div><div class="tb-bg-shape tb-shape-2"></div>
                 <div class="tb-content">
                     <div class="tb-header">
-                        <div style="display:flex; align-items:center; gap:10px;">
+                        <!-- min-width: 0 evita que el texto largo rompa el contenedor -->
+                        <div style="display:flex; align-items:center; gap:10px; min-width: 0;">
                             ${imgTag}
-                            <div><div class="tb-banco">${c.banco.toUpperCase()}</div>${digitosHtml}</div>
+                            <div style="min-width: 0;">
+                                <div class="tb-banco" style="overflow: hidden; text-overflow: ellipsis;">${c.banco.toUpperCase()}</div>
+                                ${digitosHtml}
+                            </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap: 8px;">
+                        <div style="display:flex; align-items:center; gap: 8px; flex-shrink: 0;">
                             <div class="tb-badge">${c.tipo.toUpperCase()}</div>
-                            ${topIconHTML}
+                            <!-- El botón ya no está aquí arriba -->
                         </div>
                     </div>
                     <div class="tb-body">
@@ -397,7 +403,12 @@ function renderAll() {
                     </div>
                     <div class="tb-footer">
                         <div><div class="tb-nombre">${c.nombre}</div>${aviso}</div>
-                        ${limiteInfo}
+                        
+                        <!-- Colocamos el botón aquí abajo, a la derecha -->
+                        <div style="display: flex; align-items: flex-end; gap: 10px;">
+                            ${limiteInfo}
+                            ${bottomIconHTML}
+                        </div>
                     </div>`;
         };
         
