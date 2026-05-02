@@ -4,16 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard Pro</title>
-    <!-- Aquí agregamos el favicon de tu nuevo logo -->
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
 </head>
 <body data-theme="light">
-    <!-- PANTALLA DE CARGA CON CÁPSULA Y FRASE -->
+    <!-- PANTALLA DE CARGA -->
     <div id="loader" style="display: none;">
         <div class="loading-wrapper">
-            <!-- Icono integrado en la carga -->
             <img src="logo.svg" alt="Logo" style="width: 80px; height: 80px; margin-bottom: 10px; animation: pulse 2s infinite;">
             <div class="loading-text">LOADING...</div>
             <div class="progress-capsule">
@@ -30,7 +28,6 @@
     <!-- PANTALLA DE AUTENTICACIÓN -->
     <div id="loginScreen" class="auth-container" style="display: none;">
         <div class="auth-card">
-            <!-- Icono integrado en la tarjeta de login -->
             <img src="logo.svg" alt="Dashboard Pro Logo" style="width: 70px; height: 70px; margin-bottom: 15px;">
             <h2>Dashboard Pro</h2>
             
@@ -81,6 +78,7 @@
             
             <div id="userMenu" class="user-menu-dropdown">
                 <p onclick="cambiarTab('perfil'); closeDropdowns();">⚙️ Configuración</p>
+                <p id="btnInstalarApp" style="display:none; font-weight:bold; color:var(--primary);">📱 Instalar App</p>
                 <p onclick="exportarBackup()">💾 Respaldar Datos</p>
                 <p onclick="handleLogout()" style="color: var(--danger);">🚪 Cerrar Sesión</p>
             </div>
@@ -89,8 +87,6 @@
         <main class="main-content" onclick="closeDropdowns()">
             <!-- RESUMEN -->
             <section id="tab-resumen" class="tab-content active">
-                
-                <!-- NUEVA TARJETA DE PATRIMONIO PREMIUM -->
                 <div class="card patrimonio-card">
                     <div class="patrimonio-content">
                         <p class="pat-subtitle">PATRIMONIO TOTAL</p>
@@ -123,7 +119,6 @@
                     </div>
                 </div>
                 
-                <!-- TARJETAS CON CARRUSEL HORIZONTAL -->
                 <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
                     <h4 style="margin-bottom: 15px;">Mis Cuentas y Tarjetas</h4>
                     <div style="display:flex; flex-direction: column; gap:20px;">
@@ -138,9 +133,10 @@
                     </div>
                 </div>
 
+                <!-- Gráfica de Gastos Centrada Perfectamente -->
                 <div class="card">
                     <h4>Distribución de Gastos</h4>
-                    <div style="height: 200px; margin-top: 15px;"><canvas id="chartGastos"></canvas></div>
+                    <div style="height: 250px; margin-top: 15px; position:relative;"><canvas id="chartGastos"></canvas></div>
                 </div>
                 
                 <div class="card" style="margin-top: 20px;">
@@ -153,26 +149,33 @@
                 </div>
             </section>
 
-            <!-- PRESUPUESTOS -->
+            <!-- PRESUPUESTOS (NUEVO DISEÑO DE CARRUSEL CON MEDIAS DONAS) -->
             <section id="tab-presupuestos" class="tab-content">
-                <div class="card">
-                    <h3>Definir Presupuesto Mensual</h3>
-                    <form onsubmit="handleGuardarPresupuesto(event)">
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                            <div><label style="font-size:11px;">Comida</label><input type="number" id="presComida" placeholder="$0" step="0.01"></div>
-                            <div><label style="font-size:11px;">Servicios</label><input type="number" id="presServicios" placeholder="$0" step="0.01"></div>
-                            <div><label style="font-size:11px;">Transporte</label><input type="number" id="presTransporte" placeholder="$0" step="0.01"></div>
-                            <div><label style="font-size:11px;">Vivienda/Renta</label><input type="number" id="presVivienda" placeholder="$0" step="0.01"></div>
-                            <div><label style="font-size:11px;">Ocio/Salidas</label><input type="number" id="presOcio" placeholder="$0" step="0.01"></div>
-                            <div><label style="font-size:11px;">Otros</label><input type="number" id="presOtros" placeholder="$0" step="0.01"></div>
-                        </div>
-                        <button type="submit" class="btn-primary" style="margin-top:10px;">Guardar Límites</button>
-                    </form>
+                
+                <!-- Resumen Global -->
+                <div id="presupuestoGlobalCard" class="card" style="text-align: center; border: 1px solid var(--primary); display: none;">
+                    <p style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Presupuesto Global del Mes</p>
+                    <h2 id="globalPresupText" style="margin-bottom: 10px;">$0 / $0</h2>
+                    <div style="background:var(--line); height:8px; border-radius:4px; overflow:hidden; width: 100%;">
+                        <div id="globalPresupBar" style="background:var(--primary); width:0%; height:100%; transition: width 0.5s ease-out;"></div>
+                    </div>
                 </div>
-                <div class="card">
-                    <h4>Progreso del Mes Actual</h4>
-                    <div id="listaPresupuestos" style="margin-top:15px;"></div>
-                    <div style="height:250px; margin-top:20px;"><canvas id="chartPresupuesto"></canvas></div>
+
+                <!-- Carrusel de Presupuestos sin fondo blanco de tarjeta -->
+                <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
+                    <h4 style="margin-bottom: 15px;">Estado de Presupuestos</h4>
+                    <!-- Aquí se inyectarán las tarjetas deslizables -->
+                    <div id="presupuestosGrid" class="presupuestos-slider"></div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Ajustar Límites</h3>
+                    <form id="formPresupuestosLimpio" onsubmit="handleGuardarPresupuesto(event)">
+                        <div id="contenedorInputsPresupuesto" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                            <!-- Se generan dinámicamente desde JS -->
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top:15px;">Guardar Límites</button>
+                    </form>
                 </div>
             </section>
 
@@ -183,14 +186,7 @@
                     <form onsubmit="handleGasto(event)">
                         <input type="number" id="gaMonto" placeholder="Monto ($)" step="0.01" required>
                         <input type="text" id="gaDesc" placeholder="¿En qué gastaste?" required>
-                        <select id="gaCat" required>
-                            <option value="Comida">Comida</option>
-                            <option value="Servicios">Servicios</option>
-                            <option value="Transporte">Transporte</option>
-                            <option value="Vivienda">Vivienda</option>
-                            <option value="Ocio">Ocio</option>
-                            <option value="Otros">Otros</option>
-                        </select>
+                        <select id="gaCat" required></select>
                         <select id="gaFuente" required><option value="">Selecciona la cuenta...</option></select>
                         <button type="submit" class="btn-primary" style="background: var(--danger);">Registrar Gasto</button>
                     </form>
@@ -239,27 +235,22 @@
                     <form id="formCuenta" onsubmit="handleNuevaCuenta(event)">
                         <input type="text" id="cuNombre" placeholder="Nombre de la Cuenta (Ej. Mi Nómina)" required>
                         <input type="text" id="cuBanco" placeholder="Banco (Ej. BBVA, Nu, Efectivo)" required>
-                        
                         <select id="cuTipo" required onchange="toggleCamposCuenta()">
                             <option value="debito">Débito</option>
                             <option value="credito">Crédito</option>
                             <option value="efectivo">Efectivo</option>
                         </select>
-
                         <div id="grupoDigitos" style="display:block; margin-bottom: 15px;">
                             <input type="text" id="cuDigitos" placeholder="Últimos 4 dígitos" maxlength="4" pattern="\d{4}">
                         </div>
-                        
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 15px;">
                             <input type="number" id="cuSaldo" placeholder="Saldo Actual ($)" step="0.01" required>
                             <input type="number" id="cuLimite" placeholder="Límite (TDC)" step="0.01" style="display:none;">
                         </div>
-                        
                         <div id="grupoFechas" style="display:none; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom: 15px;">
                             <input type="number" id="cuCorte" placeholder="Día de Corte" min="1" max="31">
                             <input type="number" id="cuPago" placeholder="Día de Pago" min="1" max="31">
                         </div>
-                        
                         <div style="display: flex; gap: 10px;">
                             <button type="submit" class="btn-primary" style="flex: 2;" id="btnGuardarCuenta">Añadir Cuenta</button>
                             <button type="button" class="btn-primary" style="flex: 1; background: var(--muted); display: none;" id="btnCancelarEdicionCuenta" onclick="cancelarEdicionCuenta()">Cancelar</button>
@@ -268,12 +259,11 @@
                 </div>
                 <div class="card" style="background: transparent; box-shadow: none; padding: 0;">
                     <h4 style="margin-bottom: 15px;">Mis Cuentas</h4>
-                    <!-- Aquí sigue en lista vertical para mejor gestión -->
                     <div id="listaMaestraCuentas" class="tarjetas-grid"></div>
                 </div>
             </section>
 
-            <!-- CONFIGURACIÓN -->
+            <!-- CONFIGURACIÓN Y CATEGORÍAS PERSONALIZADAS -->
             <section id="tab-perfil" class="tab-content">
                 <div class="card" style="text-align: center;">
                     <img id="perfDisplayFoto" src="" alt="Perfil" style="width:80px; height:80px; border-radius:50%; object-fit:cover; margin-bottom:10px;">
@@ -297,8 +287,18 @@
                             <div class="color-swatch" style="background:#14b8a6;" onclick="selectColor('#14b8a6', this)"></div>
                             <div class="color-swatch" style="background:#64748b;" onclick="selectColor('#64748b', this)"></div>
                         </div>
-                        <button type="submit" class="btn-primary">Guardar Configuración</button>
+                        <button type="submit" class="btn-primary">Guardar Perfil</button>
                     </form>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Etiquetas de Gastos Extras</h3>
+                    <p style="font-size: 12px; color: var(--muted); margin-bottom: 10px;">Agrega conceptos que no vengan por defecto.</p>
+                    <form onsubmit="handleAddCatCustom(event)" style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="nuevaCatInput" placeholder="Ej. Mascotas, Gimnasio..." required style="margin:0;">
+                        <button type="submit" class="btn-primary" style="width: auto; padding: 0 20px;">Añadir</button>
+                    </form>
+                    <div id="listaCatCustom" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                 </div>
 
                 <div class="card" style="margin-top: 20px;">
@@ -306,7 +306,7 @@
                     <form onsubmit="handleCambiarPassword(event)" style="text-align:left;">
                         <label style="font-size:12px; color:var(--muted);">Nueva Contraseña:</label>
                         <input type="password" id="newPassword" placeholder="Escribe tu nueva contraseña" required minlength="6">
-                        <button type="submit" class="btn-primary">Actualizar Contraseña</button>
+                        <button type="submit" class="btn-primary">Actualizar</button>
                     </form>
                 </div>
 
@@ -322,8 +322,7 @@
             </section>
         </main>
         
-        <!-- BOTÓN FLOTANTE (FAB) -->
-        <div class="fab-container">
+        <div class="fab-container" id="fabContainerMain">
             <div class="fab-menu" id="fabMenu">
                 <button class="fab-item" style="background: var(--success);" onclick="cambiarTab('ingresos', document.querySelectorAll('.nav-item')[1]); toggleFab();">📈 Ingreso</button>
                 <button class="fab-item" style="background: var(--danger);" onclick="cambiarTab('gastos', document.querySelectorAll('.nav-item')[2]); toggleFab();">📉 Gasto</button>
@@ -342,14 +341,12 @@
         </nav>
     </div>
 
-    <!-- FIREBASE & LIBRERÍAS -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    
     <script src="app.js"></script>
 </body>
 </html>
