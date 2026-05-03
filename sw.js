@@ -1,22 +1,55 @@
-const CACHE_NAME = 'dashpro-v1';
+const CACHE_NAME = 'dashpro-cache-v2'; // Cambiamos a v2 para que tu teléfono detecte la actualización
 
-// Instalación básica
-self.addEventListener('install', (e) => {
-  console.log('Service Worker instalado');
+const urlsToCache = [ 
+    './', 
+    './index.html', 
+    './styles.css', 
+    './app.js', 
+    './logo.svg',
+    './manifest.json' // Agregado para proteger la instalación PWA
+];
+
+// Instalación: Guardar archivos esenciales
+self.addEventListener('install', event => { 
+    console.log('Service Worker instalado');
+    event.waitUntil( 
+        caches.open(CACHE_NAME).then(cache => { 
+            return cache.addAll(urlsToCache); 
+        }) 
+    ); 
 });
 
-// Activación
+// Activación: Limpiar cachés de versiones anteriores
 self.addEventListener('activate', (e) => {
-  console.log('Service Worker activo');
+    console.log('Service Worker activo');
+    e.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
 });
 
-// Este evento es OBLIGATORIO para que sea PWA
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+// Fetch: Intentar red primero, si falla (offline), usar caché
+self.addEventListener('fetch', event => { 
+    event.respondWith( 
+        fetch(event.request)
+        .then(response => {
+            // Si hay internet, actualizamos el caché silenciosamente para la próxima vez
+            if(event.request.method === "GET") {
+                const resClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
+            }
+            return response;
+        })
+        .catch(() => {
+            // Si no hay red (Modo Offline), entregamos los archivos locales
+            return caches.match(event.request); 
+        }) 
+    ); 
 });
-const CACHE_NAME = 'dashpro-cache-v1';
-const urlsToCache = [ './', './index.html', './styles.css', './app.js', './logo.svg' ];
-self.addEventListener('install', event => { event.waitUntil( caches.open(CACHE_NAME).then(cache => { return cache.addAll(urlsToCache); }) ); });
-self.addEventListener('fetch', event => { event.respondWith( caches.match(event.request).then(response => { return response || fetch(event.request); }) ); });

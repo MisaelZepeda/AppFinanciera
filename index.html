@@ -7,6 +7,12 @@
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
+    <style>
+        /* ESTILOS PARA MODO PRIVACIDAD */
+        body.privacy-mode .money-blur { filter: blur(6px); opacity: 0.7; user-select: none; pointer-events: none; transition: filter 0.3s ease; }
+        .search-bar { width: 100%; padding: 10px 15px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); margin-bottom: 15px; outline: none; }
+        .search-bar:focus { border-color: var(--primary); }
+    </style>
 </head>
 <body data-theme="light">
     <!-- PANTALLA DE CARGA -->
@@ -60,7 +66,7 @@
     <!-- APLICACIÓN PRINCIPAL -->
     <div id="appDashboard" class="dashboard" style="display: none;">
         <header class="header">
-            <div style="display: flex; align-items: center; gap: 10px; cursor: pointer; max-width: 80%;" onclick="toggleUserMenu(event)">
+            <div style="display: flex; align-items: center; gap: 10px; cursor: pointer; max-width: 70%;" onclick="toggleUserMenu(event)">
                 <img id="headerFoto" src="" alt="Perfil" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                 <div style="display: flex; flex-direction: column; overflow: hidden;">
                     <h2 id="headerGreeting" style="font-size: 15px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hola!</h2>
@@ -68,13 +74,16 @@
                 </div>
             </div>
             
-            <label class="theme-switch">
-                <input type="checkbox" id="themeToggle" onchange="toggleThemeSwitch(this)" checked>
-                <span class="slider round">
-                    <span class="icon moon">🌙</span>
-                    <span class="icon sun">☀️</span>
-                </span>
-            </label>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span id="btnPrivacy" onclick="togglePrivacy()" style="font-size: 20px; cursor: pointer; user-select: none;">👁️</span>
+                <label class="theme-switch">
+                    <input type="checkbox" id="themeToggle" onchange="toggleThemeSwitch(this)" checked>
+                    <span class="slider round">
+                        <span class="icon moon">🌙</span>
+                        <span class="icon sun">☀️</span>
+                    </span>
+                </label>
+            </div>
             
             <div id="userMenu" class="user-menu-dropdown">
                 <p onclick="cambiarTab('perfil'); closeDropdowns();">⚙️ Configuración</p>
@@ -90,20 +99,20 @@
                 <div class="card patrimonio-card">
                     <div class="patrimonio-content">
                         <p class="pat-subtitle">PATRIMONIO TOTAL</p>
-                        <h1 id="valPatrimonio" style="margin: 5px 0 10px 0; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">$0.00</h1>
-                        <p class="pat-message">:) :) :) .</p>
+                        <h1 id="valPatrimonio" class="money-blur" style="margin: 5px 0 10px 0; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">$0.00</h1>
+                        <p class="pat-message">Mantienes buen ritmo financiero mensual.</p>
                         <div class="pat-bottom">
                             <div>
                                 <small style="opacity: 0.8;">Activos</small><br>
-                                <b id="valTengo" style="font-size: 15px;">$0.00</b>
+                                <b id="valTengo" class="money-blur" style="font-size: 15px;">$0.00</b>
                             </div>
                             <div style="text-align: center;">
-                                <small style="opacity: 0.8;">Capacidad de Crédito</small><br>
-                                <b id="valCapacidadCredito" style="font-size: 15px;">$0.00</b>
+                                <small style="opacity: 0.8;">Capacidad Crédito</small><br>
+                                <b id="valCapacidadCredito" class="money-blur" style="font-size: 15px;">$0.00</b>
                             </div>
                             <div style="text-align: right;">
                                 <small style="opacity: 0.8;">Deudas</small><br>
-                                <b id="valDebo" style="font-size: 15px;">$0.00</b>
+                                <b id="valDebo" class="money-blur" style="font-size: 15px;">$0.00</b>
                             </div>
                         </div>
                     </div>
@@ -113,13 +122,23 @@
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
-                    <div class="card" style="margin:0;">
-                        <small style="color:var(--success); font-weight:bold;">+ INGRESOS (MES)</small>
-                        <h3 id="homeIngresos" style="margin:5px 0 0 0;">$0.00</h3>
+                    <!-- Tarjeta Ingresos Fintech -->
+                    <div class="card" style="margin:0; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: none; padding: 15px;">
+                        <div style="color:#16a34a; font-weight:bold; font-size:13px; margin-bottom: 5px;">Ingresos</div>
+                        <h3 id="homeIngresos" class="money-blur" style="margin:0; font-size: 20px; color: #0f172a;">$0.00</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px;">
+                            <small id="pctIngresos" style="color:#16a34a; font-weight:bold; font-size:12px;">↑ 0.0%</small>
+                            <div style="width: 50px; height: 25px;"><canvas id="sparklineIngresos"></canvas></div>
+                        </div>
                     </div>
-                    <div class="card" style="margin:0;">
-                        <small style="color:var(--danger); font-weight:bold;">- GASTOS (MES)</small>
-                        <h3 id="homeGastos" style="margin:5px 0 0 0;">$0.00</h3>
+                    <!-- Tarjeta Gastos Fintech -->
+                    <div class="card" style="margin:0; background: linear-gradient(135deg, #fef2f2, #fee2e2); border: none; padding: 15px;">
+                        <div style="color:#dc2626; font-weight:bold; font-size:13px; margin-bottom: 5px;">Gastos</div>
+                        <h3 id="homeGastos" class="money-blur" style="margin:0; font-size: 20px; color: #0f172a;">$0.00</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px;">
+                            <small id="pctGastos" style="color:#dc2626; font-weight:bold; font-size:12px;">↑ 0.0%</small>
+                            <div style="width: 50px; height: 25px;"><canvas id="sparklineGastos"></canvas></div>
+                        </div>
                     </div>
                 </div>
                 
@@ -141,24 +160,32 @@
                     <h4>Distribución de Gastos</h4>
                     <div style="height: 250px; margin-top: 15px; position:relative;"><canvas id="chartGastos"></canvas></div>
                 </div>
+
+                <!-- NUEVA GRÁFICA ANUAL -->
+                <div class="card" style="margin-top: 20px;">
+                    <h4>Histórico (Últimos 6 Meses)</h4>
+                    <div style="height: 200px; margin-top: 15px; position:relative;"><canvas id="chartAnual"></canvas></div>
+                </div>
                 
-                <!-- NUEVA TARJETA: PAGO PARA NO GENERAR INTERESES -->
+                <!-- TARJETA: PAGO PARA NO GENERAR INTERESES -->
                 <div class="card" id="cardPagoNoIntereses" style="margin-top: 20px;">
                     <h4>Pago para no generar intereses</h4>
                     <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Calculado desde la última fecha de corte incluyendo MSI.</p>
                     <div id="listaPagosTDC" style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;"></div>
                     <div style="border-top: 1px solid var(--line); margin-top: 15px; padding-top: 15px; text-align: right;">
                         <small style="color:var(--muted);">Pago Total Mensual Estimado</small>
-                        <h3 id="totalEstimadoTDC" style="color:var(--danger); margin-top:5px;">$0.00</h3>
+                        <h3 id="totalEstimadoTDC" class="money-blur" style="color:var(--danger); margin-top:5px;">$0.00</h3>
                     </div>
                 </div>
 
+                <!-- NUEVOS BOTONES DE REPORTES Y CSV -->
                 <div class="card" style="margin-top: 20px;">
-                    <h4 style="color: var(--primary);">📄 Generar Reporte PDF</h4>
-                    <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Descarga tu Estado de Cuenta mensual limpio.</p>
+                    <h4 style="color: var(--primary);">📄 Reportes y Datos</h4>
+                    <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Descarga tu Estado de Cuenta o exporta tus datos a Excel.</p>
+                    <input type="month" id="mesReporte" style="margin-bottom: 10px; width: 100%;">
                     <div style="display: flex; gap: 10px;">
-                        <input type="month" id="mesReporte" style="margin-bottom: 0; flex: 1;">
-                        <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 14px;" onclick="generarPDFMes()">Descargar</button>
+                        <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 14px;" onclick="generarPDFMes()">PDF Estado Cuenta</button>
+                        <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 14px; background: var(--success);" onclick="exportarCSV()">Exportar CSV (Excel)</button>
                     </div>
                 </div>
             </section>
@@ -167,7 +194,7 @@
             <section id="tab-presupuestos" class="tab-content">
                 <div id="presupuestoGlobalCard" class="card" style="text-align: center; border: 1px solid var(--primary); display: none;">
                     <p style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Presupuesto Global del Mes</p>
-                    <h2 id="globalPresupText" style="margin-bottom: 10px;">$0 / $0</h2>
+                    <h2 id="globalPresupText" class="money-blur" style="margin-bottom: 10px;">$0 / $0</h2>
                     <div style="background:var(--line); height:8px; border-radius:4px; overflow:hidden; width: 100%;">
                         <div id="globalPresupBar" style="background:var(--primary); width:0%; height:100%; transition: width 0.5s ease-out;"></div>
                     </div>
@@ -199,7 +226,6 @@
                         <select id="gaCat" required></select>
                         <select id="gaFuente" required onchange="handleGaFuenteChange(this.value)"><option value="">Selecciona la cuenta...</option></select>
                         
-                        <!-- NUEVO: SECCIÓN MESES SIN INTERESES -->
                         <div id="msiContainer" style="display:none; margin-top: 0px; margin-bottom: 15px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px dashed var(--muted);">
                             <label style="font-size: 13px; color: var(--text); display:flex; align-items:center; gap:8px;">
                                 <input type="checkbox" id="gaIsMSI" style="width: 18px; height: 18px; margin: 0;" onchange="document.getElementById('gaMesesContainer').style.display = this.checked ? 'block' : 'none'"> Compra a Meses Sin Intereses (MSI)
@@ -212,7 +238,14 @@
                         <button type="submit" class="btn-primary" style="background: var(--danger);">Registrar Gasto</button>
                     </form>
                 </div>
-                <div class="card"><h4>Historial de Gastos</h4><div id="listaGastos"></div></div>
+                <div class="card">
+                    <h4>Historial de Gastos</h4>
+                    <input type="text" id="searchGastos" class="search-bar" placeholder="🔍 Buscar gasto o categoría..." oninput="renderListas()">
+                    <div id="listaGastos"></div>
+                    <div id="btnMasGastos" style="text-align:center; margin-top:15px; display:none;">
+                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('gastos')">Cargar más registros</button>
+                    </div>
+                </div>
             </section>
 
             <!-- INGRESOS -->
@@ -226,7 +259,14 @@
                         <button type="submit" class="btn-primary" style="background: var(--success);">Registrar Ingreso</button>
                     </form>
                 </div>
-                <div class="card"><h4>Historial de Ingresos</h4><div id="listaIngresos"></div></div>
+                <div class="card">
+                    <h4>Historial de Ingresos</h4>
+                    <input type="text" id="searchIngresos" class="search-bar" placeholder="🔍 Buscar ingreso..." oninput="renderListas()">
+                    <div id="listaIngresos"></div>
+                    <div id="btnMasIngresos" style="text-align:center; margin-top:15px; display:none;">
+                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('ingresos')">Cargar más registros</button>
+                    </div>
+                </div>
             </section>
 
             <!-- TRASPASOS / PAGOS -->
@@ -246,7 +286,14 @@
                         <button type="submit" class="btn-primary">Procesar Movimiento</button>
                     </form>
                 </div>
-                <div class="card"><h4>Historial de Movimientos</h4><div id="listaMovimientos"></div></div>
+                <div class="card">
+                    <h4>Historial de Movimientos</h4>
+                    <input type="text" id="searchMovs" class="search-bar" placeholder="🔍 Buscar movimiento..." oninput="renderListas()">
+                    <div id="listaMovimientos"></div>
+                    <div id="btnMasMovs" style="text-align:center; margin-top:15px; display:none;">
+                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('movimientos')">Cargar más registros</button>
+                    </div>
+                </div>
             </section>
 
             <!-- CUENTAS -->
