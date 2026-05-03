@@ -1061,4 +1061,11 @@ async function generarPDFMes() {
     } catch (error) { mostrarAlerta("Error", "Problema al generar el reporte.", "error"); } finally { if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; }
 }
 
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+// Activar Service Worker para PWA Offline
+if ('serviceWorker' in navigator) { 
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('SW registrado', reg))
+        .catch(err => console.log('Error en SW', err));
+    });
+}
