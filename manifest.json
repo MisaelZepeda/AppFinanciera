@@ -1,6 +1,8 @@
 {
   "name": "Dashboard Pro",
   "short_name": "DashPro",
+  "id": "/?source=pwa",
+  "orientation": "portrait",
   "description": "Controla tus ingresos, gastos, presupuestos y mantén un ritmo financiero saludable de forma privada y segura.",
   "start_url": "./index.html",
   "display": "standalone",
@@ -22,12 +24,12 @@
   "screenshots": [
     {
       "src": "screenshot1.png",
-      "sizes": "1080x1920",
+      "sizes": "1080x2412",
       "type": "image/png"
     },
     {
       "src": "screenshot2.png",
-      "sizes": "1080x1920",
+      "sizes": "1080x2412",
       "type": "image/png"
     }
   ]

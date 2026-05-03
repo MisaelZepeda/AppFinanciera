@@ -35,21 +35,26 @@ self.addEventListener('activate', (e) => {
     );
 });
 
-// Fetch: Intentar red primero, si falla (offline), usar caché
-self.addEventListener('fetch', event => { 
-    event.respondWith( 
-        fetch(event.request)
-        .then(response => {
-            // Si hay internet, actualizamos el caché silenciosamente para la próxima vez
-            if(event.request.method === "GET") {
-                const resClone = response.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, resClone));
-            }
-            return response;
+// Fetch: Estrategia "Stale-While-Revalidate" (Favorita de PWABuilder)
+self.addEventListener('fetch', event => {
+    // Solo manejamos peticiones GET (ignoramos POST de Firebase)
+    if (event.request.method !== 'GET') return;
+
+    event.respondWith(
+        caches.match(event.request).then(cachedResponse => {
+            // 1. Iniciamos la petición a internet en segundo plano para actualizar el caché
+            const fetchPromise = fetch(event.request).then(networkResponse => {
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, networkResponse.clone());
+                });
+                return networkResponse;
+            }).catch(() => {
+                // Falla silenciosa si no hay internet
+            });
+
+            // 2. Si hay algo en caché, lo mostramos de INMEDIATO (super rápido)
+            // Si no hay nada en caché, esperamos la respuesta de internet
+            return cachedResponse || fetchPromise;
         })
-        .catch(() => {
-            // Si no hay red (Modo Offline), entregamos los archivos locales
-            return caches.match(event.request); 
-        }) 
-    ); 
+    );
 });
