@@ -248,6 +248,14 @@ function cambiarTab(id, btn) {
     if(document.getElementById('ingresoFormTitle')) document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso";
     if(document.getElementById('gastoFormTitle')) document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto";
     if(document.getElementById('movTitle')) document.getElementById('movTitle').innerText = "Nuevo Movimiento";
+    
+    // Resetear MSI
+    const gaIsMSI = document.getElementById('gaIsMSI');
+    if (gaIsMSI) {
+        gaIsMSI.checked = false;
+        document.getElementById('gaMesesContainer').style.display = 'none';
+        document.getElementById('msiContainer').style.display = 'none';
+    }
 }
 
 function toggleThemeSwitch(checkbox) { const t = checkbox.checked ? 'light' : 'dark'; document.body.setAttribute('data-theme', t); renderChart(); renderPresupuestos(); }
@@ -325,10 +333,34 @@ window.resetearCuenta = function() {
 window.editCuenta = function(id) { 
     const c = state.cuentas.find(x => x.id == id); if (!c) return; 
     cambiarTab('cuentas'); 
-    document.getElementById('cuNombre').value = c.nombre || ''; document.getElementById('cuBanco').value = c.banco || ''; document.getElementById('cuTipo').value = c.tipo || 'debito'; document.getElementById('cuSaldo').value = c.saldo || 0; document.getElementById('cuDigitos').value = c.digitos || ''; document.getElementById('cuClabe').value = c.clabe || ''; document.getElementById('cuLimite').value = c.limite || ''; document.getElementById('cuPago').value = c.diaPago || ''; document.getElementById('cuCorte').value = c.diaCorte || ''; 
+    document.getElementById('cuNombre').value = c.nombre || ''; 
+    document.getElementById('cuBanco').value = c.banco || ''; 
+    document.getElementById('cuTipo').value = c.tipo || 'debito'; 
+    document.getElementById('cuSaldo').value = c.saldo || 0; 
+    document.getElementById('cuDigitos').value = c.digitos || ''; 
+    document.getElementById('cuClabe').value = c.clabe || ''; 
+    document.getElementById('cuLimite').value = c.limite || ''; 
+    document.getElementById('cuPago').value = c.diaPago || ''; 
+    document.getElementById('cuCorte').value = c.diaCorte || ''; 
+    document.getElementById('cuIcon').style.display = 'block';
+    document.getElementById('cuIcon').value = c.icon || '';
+    
     toggleCamposCuenta(); currentCuentaEditId = id; document.getElementById('cuentaFormTitle').innerText = "Editando Cuenta"; document.getElementById('btnGuardarCuenta').innerText = "Guardar Cambios"; document.getElementById('btnCancelarEdicionCuenta').style.display = 'block'; window.scrollTo(0,0); 
 };
 
+// Detección de Cuenta en Nuevo Gasto (Para mostrar sección MSI)
+window.handleGaFuenteChange = function(accountId) {
+    const c = state.cuentas.find(x => x.id == accountId);
+    const msiContainer = document.getElementById('msiContainer');
+    if (c && c.tipo === 'credito') {
+        msiContainer.style.display = 'block';
+    } else {
+        msiContainer.style.display = 'none';
+        document.getElementById('gaIsMSI').checked = false;
+        document.getElementById('gaMesesContainer').style.display = 'none';
+        document.getElementById('gaMeses').value = "";
+    }
+};
 
 function handleIngreso(e) {
     e.preventDefault(); const m = parseFloat(document.getElementById('inMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
@@ -343,10 +375,41 @@ function handleGasto(e) {
     e.preventDefault(); const m = parseFloat(document.getElementById('gaMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('gaFuente').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
-    updates[`transacciones/${id}`] = { desc: document.getElementById('gaDesc').value, cat: document.getElementById('gaCat').value, monto: m, tipo: 'gasto', cuentaId: c.id, fecha: oldFecha }; updates[`cuentas/${c.id}/saldo`] = (c.tipo === 'debito' || c.tipo === 'efectivo') ? currentSaldo - m : currentSaldo + m;
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('gaFuente').disabled = false; document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; mostrarAlerta("Gasto", "Cobro descontado.", "success"); });
+    
+    // Captura valores MSI
+    const isMSI = document.getElementById('gaIsMSI').checked;
+    const meses = parseInt(document.getElementById('gaMeses').value) || 1;
+
+    updates[`transacciones/${id}`] = { desc: document.getElementById('gaDesc').value, cat: document.getElementById('gaCat').value, monto: m, tipo: 'gasto', cuentaId: c.id, fecha: oldFecha, isMSI: isMSI, meses: meses }; 
+    updates[`cuentas/${c.id}/saldo`] = (c.tipo === 'debito' || c.tipo === 'efectivo') ? currentSaldo - m : currentSaldo + m;
+    
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
+        e.target.reset(); 
+        currentEditId = null; 
+        document.getElementById('gaFuente').disabled = false; 
+        document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; 
+        window.handleGaFuenteChange(""); 
+        mostrarAlerta("Gasto", "Cobro descontado.", "success"); 
+    });
 }
-function editGasto(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('gastos'); document.getElementById('gaDesc').value = t.desc; document.getElementById('gaMonto').value = t.monto; document.getElementById('gaCat').value = t.cat; document.getElementById('gaFuente').value = t.cuentaId; document.getElementById('gaFuente').disabled = true; currentEditId = fid; document.getElementById('gastoFormTitle').innerText = "Editando Gasto"; }
+function editGasto(fid) { 
+    const t = state.transacciones.find(x => x.firebaseId === fid); 
+    cambiarTab('gastos'); 
+    document.getElementById('gaDesc').value = t.desc; 
+    document.getElementById('gaMonto').value = t.monto; 
+    document.getElementById('gaCat').value = t.cat; 
+    document.getElementById('gaFuente').value = t.cuentaId; 
+    document.getElementById('gaFuente').disabled = true; 
+    currentEditId = fid; 
+    document.getElementById('gastoFormTitle').innerText = "Editando Gasto"; 
+
+    window.handleGaFuenteChange(t.cuentaId);
+    if (t.isMSI) {
+        document.getElementById('gaIsMSI').checked = true;
+        document.getElementById('gaMesesContainer').style.display = 'block';
+        document.getElementById('gaMeses').value = t.meses;
+    }
+}
 
 function setMovMode(mode) { currentMovMode = mode; document.getElementById('btnModoPago').style.background = mode === 'pago' ? 'var(--primary)' : 'var(--muted)'; document.getElementById('btnModoTras').style.background = mode === 'pago' ? 'var(--muted)' : 'var(--primary)'; document.getElementById('lblDestino').innerText = mode === 'pago' ? 'Destino (Crédito):' : 'Destino (Débito/Efectivo):'; actualizarSelects(); }
 function handleMovimiento(e) {
@@ -385,9 +448,16 @@ function renderPatrimonioChart(patrimonioActual) {
 }
 
 function renderAll() {
-    let tengo = 0; let debo = 0; let gT = 0; let iT = 0; const hoy = new Date(); const diaHoy = hoy.getDate(); const mesAct = hoy.getMonth(); let hDeb = ""; let hCre = ""; let hMae = "";
-    
-    state.cuentas.forEach(c => {
+    // Ordenar de Mayor a Menor Saldo para Cuentas de Débito
+    let cuentasDebito = state.cuentas.filter(c => c.tipo === 'debito' || c.tipo === 'efectivo').sort((a,b) => b.saldo - a.saldo);
+    let cuentasCredito = state.cuentas.filter(c => c.tipo === 'credito');
+    let masterCuentas = [...state.cuentas]; // Orden original para la Lista Maestra
+
+    let tengo = 0; let debo = 0; let capacidadCredito = 0; let gT = 0; let iT = 0; 
+    const hoy = new Date(); const diaHoy = hoy.getDate(); const mesAct = hoy.getMonth(); 
+    let hDeb = ""; let hCre = ""; let hMae = "";
+
+    const generateCardHTML = (c, isHome) => {
         let aviso = "";
         if(c.diaPago && c.diaPago > 0) {
             const yaPagado = c.mesPagado === mesAct; const vence = c.diaPago - diaHoy;
@@ -396,7 +466,10 @@ function renderAll() {
         }
         
         const colorFondo = getBankColor(c.banco); let limiteInfo = ""; let tituloSaldo = c.tipo === 'credito' ? "DEUDA ACTUAL" : "SALDO DISPONIBLE";
-        if (c.tipo === 'credito' && c.limite > 0) { const disponible = c.limite - c.saldo; limiteInfo = `<div style="text-align: right;"><div style="font-size: 10px; opacity: 0.8;">Límite: $${c.limite.toLocaleString('es-MX')}</div><div style="font-size: 13px; font-weight: bold; color: #a7f3d0;">Disp: $${disponible.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div></div>`; }
+        if (c.tipo === 'credito' && c.limite > 0) { 
+            const disponible = c.limite - c.saldo; 
+            limiteInfo = `<div style="text-align: right;"><div style="font-size: 10px; opacity: 0.8;">Límite: $${c.limite.toLocaleString('es-MX')}</div><div style="font-size: 13px; font-weight: bold; color: #a7f3d0;">Disp: $${disponible.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div></div>`; 
+        }
         let digitosHtml = c.tipo !== 'efectivo' ? `<div class="tb-digitos">**** ${c.digitos || '0000'}</div>` : "";
 
         let clearbitUrl = `https://logo.clearbit.com/${c.banco.replace(/\s/g, '').toLowerCase()}.com`;
@@ -404,58 +477,165 @@ function renderAll() {
         let finalSrc = c.icon || clearbitUrl;
         let imgTag = `<img src="${finalSrc}" onerror="this.onerror=null; this.src='${uiAvatarsUrl}';" style="width:32px; height:32px; border-radius:50%; background:white; padding:2px; object-fit:contain;">`;
 
-        const buildCardHtmlContent = (isHome) => {
-            let floatShareIconSVG = `<div class="tb-share-icon" onclick="generarTarjetaCompartir('${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg></div>`;
-            let bottomIconHTML = (isHome && c.tipo !== 'credito') ? floatShareIconSVG : '';
-            
-            return `<div class="tarjeta-bancaria" style="background: ${colorFondo};">
-                <div class="tb-bg-shape tb-shape-1"></div><div class="tb-bg-shape tb-shape-2"></div>
-                <div class="tb-content">
-                    <div class="tb-header">
-                        <div style="display:flex; align-items:center; gap:10px; min-width: 0;">
-                            ${imgTag}
-                            <div style="min-width: 0;">
-                                <div class="tb-banco" style="overflow: hidden; text-overflow: ellipsis;">${c.banco.toUpperCase()}</div>
-                                ${digitosHtml}
-                            </div>
-                        </div>
-                        <div style="display:flex; align-items:center; gap: 8px; flex-shrink: 0;">
-                            <div class="tb-badge">${c.tipo.toUpperCase()}</div>
+        let floatShareIconSVG = `<div class="tb-share-icon" onclick="generarTarjetaCompartir('${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg></div>`;
+        let bottomIconHTML = (isHome && c.tipo !== 'credito') ? floatShareIconSVG : '';
+
+        return `<div class="tarjeta-bancaria" style="background: ${colorFondo};">
+            <div class="tb-bg-shape tb-shape-1"></div><div class="tb-bg-shape tb-shape-2"></div>
+            <div class="tb-content">
+                <div class="tb-header">
+                    <div style="display:flex; align-items:center; gap:10px; min-width: 0;">
+                        ${imgTag}
+                        <div style="min-width: 0;">
+                            <div class="tb-banco" style="overflow: hidden; text-overflow: ellipsis;">${c.banco.toUpperCase()}</div>
+                            ${digitosHtml}
                         </div>
                     </div>
-                    <div class="tb-body">
-                        <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">${tituloSaldo}</div>
-                        <div class="tb-saldo">$${c.saldo.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+                    <div style="display:flex; align-items:center; gap: 8px; flex-shrink: 0;">
+                        <div class="tb-badge">${c.tipo.toUpperCase()}</div>
                     </div>
-                    <div class="tb-footer">
-                        <div><div class="tb-nombre">${c.nombre}</div>${aviso}</div>
-                        <div style="display: flex; align-items: flex-end; gap: 10px;">
-                            ${limiteInfo}
-                            ${bottomIconHTML}
-                        </div>
-                    </div>`;
-        };
-        
+                </div>
+                <div class="tb-body">
+                    <div style="font-size: 10px; opacity: 0.8; margin-bottom: 2px;">${tituloSaldo}</div>
+                    <div class="tb-saldo">$${c.saldo.toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+                </div>
+                <div class="tb-footer">
+                    <div><div class="tb-nombre">${c.nombre}</div>${aviso}</div>
+                    <div style="display: flex; align-items: flex-end; gap: 10px;">
+                        ${limiteInfo}
+                        ${bottomIconHTML}
+                    </div>
+                </div>`;
+    };
+
+    cuentasDebito.forEach(c => { tengo += c.saldo; hDeb += generateCardHTML(c, true) + `</div></div>`; });
+    cuentasCredito.forEach(c => { debo += c.saldo; capacidadCredito += (c.limite > 0 ? c.limite - c.saldo : 0); hCre += generateCardHTML(c, true) + `</div></div>`; });
+    masterCuentas.forEach(c => {
         const actionsHtml = `<div class="tb-actions">
             <button class="tb-action-btn" onclick="window.editCuenta('${c.id}')">✏️ Editar</button>
             <button class="tb-action-btn" onclick="window.sumarInteres('${c.id}')">+ Interés</button>
             <button class="tb-action-btn danger" onclick="window.confirmarBorrarCuenta('${c.id}')">Borrar</button>
         </div>`;
-
-        if(c.tipo === 'debito' || c.tipo === 'efectivo'){ tengo += c.saldo; hDeb += buildCardHtmlContent(true) + `</div></div>`; } else { debo += c.saldo; hCre += buildCardHtmlContent(true) + `</div></div>`; }
-        hMae += buildCardHtmlContent(false) + actionsHtml + `</div></div>`; 
+        hMae += generateCardHTML(c, false) + actionsHtml + `</div></div>`;
     });
     
     document.getElementById('widgetDebitos').innerHTML = hDeb || "<small style='padding: 0 10px;'>Aún no agregas cuentas de débito.</small>"; 
     document.getElementById('widgetCreditos').innerHTML = hCre || "<small style='padding: 0 10px;'>Aún no agregas tarjetas de crédito.</small>"; 
     document.getElementById('listaMaestraCuentas').innerHTML = hMae;
     
-    document.getElementById('valTengo').innerText = `$${tengo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; document.getElementById('valDebo').innerText = `$${debo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; const patrimonio = tengo - debo; document.getElementById('valPatrimonio').innerText = `$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; renderPatrimonioChart(patrimonio);
+    // Actualización Patrimonio y Capacidad de Crédito
+    document.getElementById('valTengo').innerText = `$${tengo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; 
+    document.getElementById('valDebo').innerText = `$${debo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; 
+    document.getElementById('valCapacidadCredito').innerText = `$${capacidadCredito.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+    const patrimonio = tengo - debo; document.getElementById('valPatrimonio').innerText = `$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; renderPatrimonioChart(patrimonio);
     const prefijoMes = `${hoy.getFullYear()}-${(hoy.getMonth() + 1).toString().padStart(2, '0')}`; const txMes = state.transacciones.filter(t => t.fecha && t.fecha.startsWith(prefijoMes)); gT = txMes.filter(t => t.tipo==='gasto').reduce((a, b) => a + Number(b.monto || 0), 0); iT = txMes.filter(t => t.tipo==='ingreso').reduce((a, b) => a + Number(b.monto || 0), 0); 
     document.getElementById('homeIngresos').innerText = `$${iT.toLocaleString('es-MX', {minimumFractionDigits: 2})}`; document.getElementById('homeGastos').innerText = `$${gT.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
-    
+    // NUEVO: Mensaje Dinámico del Patrimonio con Múltiples Frases
+    const mensajePatrimonio = document.querySelector('.pat-message');
+    if (mensajePatrimonio) {
+        
+        // Bancos de frases para cada situación
+        const frasesNeutras = [
+            "Resumen de tu capital neto al día de hoy.",
+            "El panorama general de todas tus cuentas.",
+            "Aquí tienes el balance total de tu patrimonio.",
+            "Listo para comenzar a registrar los movimientos del mes."
+        ];
+        
+        const frasesAlerta = [
+            "⚠️ Atención: Tus gastos del mes superan a tus ingresos.",
+            "⚠️ Es un buen momento para revisar tus presupuestos.",
+            "⚠️ Tu ritmo de gasto mensual está por encima de lo habitual.",
+            "⚠️ Cuidado: Este mes el flujo de salida es mayor al de entrada."
+        ];
+        
+        const frasesPositivas = [
+            "✅ ¡Excelente! Tu balance mensual se mantiene en verde.",
+            "✅ Vas por muy buen camino construyendo tu capital.",
+            "✅ Tus buenos hábitos financieros están dando frutos.",
+            "✅ Tienes un ritmo financiero muy saludable este mes.",
+            "✅ ¡Gran trabajo! Mantienes tus gastos bajo total control."
+        ];
+
+        // Lógica para elegir al azar y cambiar colores
+        if (iT === 0 && gT === 0) {
+            mensajePatrimonio.innerText = frasesNeutras[Math.floor(Math.random() * frasesNeutras.length)];
+            mensajePatrimonio.style.color = "white";
+        } else if (gT > iT) {
+            mensajePatrimonio.innerText = frasesAlerta[Math.floor(Math.random() * frasesAlerta.length)];
+            mensajePatrimonio.style.color = "#fca5a5"; // Rojo pastel suave
+        } else {
+            mensajePatrimonio.innerText = frasesPositivas[Math.floor(Math.random() * frasesPositivas.length)];
+            mensajePatrimonio.style.color = "#a7f3d0"; // Verde pastel suave
+        }
+    }
+    // --- LÓGICA: PAGO PARA NO GENERAR INTERESES ---
+    let tarjetasPagoHtml = ""; let totalMensualEstimado = 0;
+    cuentasCredito.forEach(c => {
+        let pagoNoIntereses = 0;
+        let diaCorte = c.diaCorte || 1;
+        let lastCorteDate = new Date(hoy.getFullYear(), hoy.getMonth(), diaCorte);
+        
+        // Si hoy es antes del día de corte, el último corte fue el mes anterior
+        if (hoy.getDate() < diaCorte) {
+            lastCorteDate.setMonth(lastCorteDate.getMonth() - 1);
+        }
+
+        const txTDC = state.transacciones.filter(t => t.tipo === 'gasto' && t.cuentaId == c.id);
+
+        txTDC.forEach(t => {
+            let txDate = new Date(t.fecha + 'T12:00:00'); // Fija zona horaria para precisión local
+            if (t.isMSI && t.meses > 1) {
+                // Lógica Meses Sin Intereses
+                let monthsElapsed = (hoy.getFullYear() - txDate.getFullYear()) * 12 + (hoy.getMonth() - txDate.getMonth());
+                if (monthsElapsed >= 0 && monthsElapsed < t.meses) {
+                    pagoNoIntereses += (t.monto / t.meses);
+                }
+            } else {
+                // Lógica compras normales
+                if (txDate >= lastCorteDate) {
+                    pagoNoIntereses += t.monto;
+                }
+            }
+        });
+
+        totalMensualEstimado += pagoNoIntereses;
+
+        let clearbitUrl = `https://logo.clearbit.com/${c.banco.replace(/\s/g, '').toLowerCase()}.com`;
+        let uiAvatarsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.banco)}&background=random&color=fff&size=128&bold=true`;
+        let finalSrc = c.icon || clearbitUrl;
+
+        tarjetasPagoHtml += `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--bg); border-radius:12px; border:1px solid var(--line);">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="${finalSrc}" onerror="this.onerror=null; this.src='${uiAvatarsUrl}';" style="width:28px; height:28px; border-radius:50%; background:white; padding:2px; object-fit:contain; border:1px solid var(--line);">
+                <span style="font-weight:bold; font-size:14px; color:var(--text);">${c.nombre}</span>
+            </div>
+            <span style="font-weight:900; color:var(--text);">$${pagoNoIntereses.toLocaleString('es-MX', {minimumFractionDigits:2})}</span>
+        </div>`;
+    });
+
+    const cardPagoTDC = document.getElementById('listaPagosTDC');
+    if (cardPagoTDC) {
+        cardPagoTDC.innerHTML = tarjetasPagoHtml || "<small style='color:var(--muted); text-align:center; display:block;'>No se encontraron pagos pendientes este periodo.</small>";
+    }
+    const totalTDC = document.getElementById('totalEstimadoTDC');
+    if (totalTDC) {
+        totalTDC.innerText = `$${totalMensualEstimado.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+    }
+
     let hG = ""; let hI = ""; let hM = "";
-    state.transacciones.slice().reverse().forEach(t => {
+    
+    // Ordenamiento estricto: Primero por fecha (más reciente arriba), luego por ID para desempatar
+    const transOrdenadas = state.transacciones.slice().sort((a, b) => {
+        const dateA = new Date(a.fecha || 0);
+        const dateB = new Date(b.fecha || 0);
+        if (dateB > dateA) return 1;
+        if (dateB < dateA) return -1;
+        return (b.firebaseId > a.firebaseId) ? 1 : -1;
+    });
+
+    transOrdenadas.forEach(t => {
         let actionStr = t.tipo === 'movimiento' ? `editMovimiento('${t.firebaseId}')` : (t.tipo === 'gasto' ? `editGasto('${t.firebaseId}')` : `editIngreso('${t.firebaseId}')`);
         const item = `<div class="bank-item"><div>${t.desc}<br><small>${t.fecha}</small></div><div style="display:flex; align-items:center;"><button class="del-btn" onclick="window.eliminarTransaccion('${t.firebaseId}')">🗑️</button><button class="edit-btn" onclick="${actionStr}">✏️</button><b>$${Number(t.monto || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}</b></div></div>`;
         if(t.tipo === 'gasto') hG += item; else if (t.tipo === 'ingreso') hI += item; else hM += item;
@@ -466,13 +646,15 @@ function renderAll() {
 }
 
 function actualizarSelects() {
-    const optDeb = state.cuentas.filter(c => c.tipo==='debito' || c.tipo==='efectivo').map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    const optDeb = state.cuentas.filter(c => c.tipo==='debito' || c.tipo==='efectivo').map(c => `<option value="${c.id}">${c.nombre} ($${c.saldo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
     const optCre = state.cuentas.filter(c => c.tipo==='credito').map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
     const optAll = state.cuentas.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    
     if(document.getElementById('inCuenta')) document.getElementById('inCuenta').innerHTML = optDeb; 
     if(document.getElementById('gaFuente')) document.getElementById('gaFuente').innerHTML = optAll; 
     if(document.getElementById('movOrigen')) document.getElementById('movOrigen').innerHTML = optDeb; 
     if(document.getElementById('movDestino')) document.getElementById('movDestino').innerHTML = currentMovMode === 'pago' ? optCre : optDeb; 
+    
     const todasLasCats = [...categoriasBase, ...state.categoriasCustom];
     if(document.getElementById('gaCat')) { document.getElementById('gaCat').innerHTML = todasLasCats.map(c => `<option value="${c}">${c}</option>`).join(''); }
 }
@@ -495,7 +677,7 @@ function toggleCamposCuenta() {
     else if (tipo === 'credito') { grupoDigitos.style.display = 'block'; cuLimite.style.display = 'block'; grupoFechas.style.display = 'grid'; cuClabe.style.display = 'none'; } 
 }
 
-function cancelarEdicionCuenta() { currentCuentaEditId = null; document.getElementById('formCuenta').reset(); document.getElementById('cuentaFormTitle').innerText = "Registrar Cuenta"; document.getElementById('btnGuardarCuenta').innerText = "Añadir Cuenta"; document.getElementById('btnCancelarEdicionCuenta').style.display = 'none'; toggleCamposCuenta(); }
+function cancelarEdicionCuenta() { currentCuentaEditId = null; document.getElementById('formCuenta').reset(); document.getElementById('cuentaFormTitle').innerText = "Registrar Cuenta"; document.getElementById('btnGuardarCuenta').innerText = "Añadir Cuenta"; document.getElementById('btnCancelarEdicionCuenta').style.display = 'none'; document.getElementById('cuIcon').style.display = 'none'; document.getElementById('cuIcon').value = ''; toggleCamposCuenta(); }
 
 function handleNuevaCuenta(e) { 
     e.preventDefault(); 
@@ -503,7 +685,16 @@ function handleNuevaCuenta(e) {
     if (tipo === 'debito' || tipo === 'credito') { digitos = document.getElementById('cuDigitos').value || ""; } if (tipo === 'debito') { clabe = document.getElementById('cuClabe').value || ""; } if (tipo === 'credito') { limite = parseFloat(document.getElementById('cuLimite').value) || 0; diaPago = parseInt(document.getElementById('cuPago').value) || 0; diaCorte = parseInt(document.getElementById('cuCorte').value) || 0; } 
     const cExistente = state.cuentas.find(x => x.id == id); const mesPagadoActual = cExistente ? cExistente.mesPagado : null;
     let dataGuardar = { id: id, nombre: document.getElementById('cuNombre').value, banco: b, tipo: tipo, saldo: parseFloat(document.getElementById('cuSaldo').value) || 0, limite: limite, digitos: digitos, clabe: clabe, diaPago: diaPago, diaCorte: diaCorte }; 
-    if (cExistente && cExistente.icon) dataGuardar.icon = cExistente.icon; 
+    
+    // Guardar Icono modificado
+    let iconUrl = "";
+    if (currentCuentaEditId) {
+         iconUrl = document.getElementById('cuIcon').value || (cExistente ? cExistente.icon : "");
+    } else if (cExistente && cExistente.icon) {
+         iconUrl = cExistente.icon;
+    }
+    if (iconUrl) dataGuardar.icon = iconUrl; 
+
     if (mesPagadoActual !== null && mesPagadoActual !== undefined) dataGuardar.mesPagado = mesPagadoActual; 
     
     db.ref(`Usuarios/${auth.currentUser.uid}/cuentas/${id}`).set(dataGuardar).then(() => { mostrarAlerta("Guardado", "Cuenta registrada.", "success"); cancelarEdicionCuenta(); }); 

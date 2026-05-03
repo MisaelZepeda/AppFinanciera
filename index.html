@@ -91,11 +91,15 @@
                     <div class="patrimonio-content">
                         <p class="pat-subtitle">PATRIMONIO TOTAL</p>
                         <h1 id="valPatrimonio" style="margin: 5px 0 10px 0; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">$0.00</h1>
-                        <p class="pat-message">Mantienes buen ritmo financiero mensual.</p>
+                        <p class="pat-message">:) :) :) .</p>
                         <div class="pat-bottom">
                             <div>
                                 <small style="opacity: 0.8;">Activos</small><br>
                                 <b id="valTengo" style="font-size: 15px;">$0.00</b>
+                            </div>
+                            <div style="text-align: center;">
+                                <small style="opacity: 0.8;">Capacidad de Crédito</small><br>
+                                <b id="valCapacidadCredito" style="font-size: 15px;">$0.00</b>
                             </div>
                             <div style="text-align: right;">
                                 <small style="opacity: 0.8;">Deudas</small><br>
@@ -138,6 +142,17 @@
                     <div style="height: 250px; margin-top: 15px; position:relative;"><canvas id="chartGastos"></canvas></div>
                 </div>
                 
+                <!-- NUEVA TARJETA: PAGO PARA NO GENERAR INTERESES -->
+                <div class="card" id="cardPagoNoIntereses" style="margin-top: 20px;">
+                    <h4>Pago para no generar intereses</h4>
+                    <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Calculado desde la última fecha de corte incluyendo MSI.</p>
+                    <div id="listaPagosTDC" style="display:flex; flex-direction:column; gap:10px; margin-top: 15px;"></div>
+                    <div style="border-top: 1px solid var(--line); margin-top: 15px; padding-top: 15px; text-align: right;">
+                        <small style="color:var(--muted);">Pago Total Mensual Estimado</small>
+                        <h3 id="totalEstimadoTDC" style="color:var(--danger); margin-top:5px;">$0.00</h3>
+                    </div>
+                </div>
+
                 <div class="card" style="margin-top: 20px;">
                     <h4 style="color: var(--primary);">📄 Generar Reporte PDF</h4>
                     <p style="font-size:12px; color:var(--muted); margin-bottom:10px;">Descarga tu Estado de Cuenta mensual limpio.</p>
@@ -182,7 +197,18 @@
                         <input type="number" id="gaMonto" placeholder="Monto ($)" step="0.01" required>
                         <input type="text" id="gaDesc" placeholder="¿En qué gastaste?" required>
                         <select id="gaCat" required></select>
-                        <select id="gaFuente" required><option value="">Selecciona la cuenta...</option></select>
+                        <select id="gaFuente" required onchange="handleGaFuenteChange(this.value)"><option value="">Selecciona la cuenta...</option></select>
+                        
+                        <!-- NUEVO: SECCIÓN MESES SIN INTERESES -->
+                        <div id="msiContainer" style="display:none; margin-top: 0px; margin-bottom: 15px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px dashed var(--muted);">
+                            <label style="font-size: 13px; color: var(--text); display:flex; align-items:center; gap:8px;">
+                                <input type="checkbox" id="gaIsMSI" style="width: 18px; height: 18px; margin: 0;" onchange="document.getElementById('gaMesesContainer').style.display = this.checked ? 'block' : 'none'"> Compra a Meses Sin Intereses (MSI)
+                            </label>
+                            <div id="gaMesesContainer" style="display:none; margin-top: 10px;">
+                                <input type="number" id="gaMeses" placeholder="¿A cuántos meses?" min="2" max="48" style="margin-bottom:0;">
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn-primary" style="background: var(--danger);">Registrar Gasto</button>
                     </form>
                 </div>
@@ -230,6 +256,7 @@
                     <form id="formCuenta" onsubmit="handleNuevaCuenta(event)">
                         <input type="text" id="cuNombre" placeholder="Nombre de la Cuenta (Ej. Mi Nómina)" required>
                         <input type="text" id="cuBanco" placeholder="Banco (Ej. BBVA, Nu, Efectivo)" required>
+                        <input type="url" id="cuIcon" placeholder="Enlace del Logo URL (Opcional)" style="display:none; margin-bottom: 15px;">
                         <select id="cuTipo" required onchange="toggleCamposCuenta()">
                             <option value="debito">Débito</option>
                             <option value="credito">Crédito</option>
