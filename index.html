@@ -35,7 +35,7 @@
     <div id="loginScreen" class="auth-container" style="display: none;">
         <div class="auth-card">
             <img src="logo.svg" alt="Dashboard Pro Logo" style="width: 70px; height: 70px; margin-bottom: 15px;">
-            <h2>Dashboard Pro</h2>
+            <h2>Dashboard Pro 2.0</h2>
             
             <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
                 <input type="email" id="logEmail" placeholder="Correo Electrónico" required>
@@ -87,6 +87,7 @@
             
             <div id="userMenu" class="user-menu-dropdown">
                 <p onclick="cambiarTab('perfil'); closeDropdowns();">⚙️ Configuración</p>
+                <p onclick="cambiarTab('cuentas'); closeDropdowns();">🏦 Lista de Cuentas</p>
                 <p id="btnInstalarApp" style="display:none; font-weight:bold; color:var(--primary);">📱 Instalar App</p>
                 <p onclick="exportarBackup()">💾 Respaldar Datos</p>
                 <p onclick="handleLogout()" style="color: var(--danger);">🚪 Cerrar Sesión</p>
@@ -216,82 +217,37 @@
                 </div>
             </section>
 
-            <!-- GASTOS -->
-            <section id="tab-gastos" class="tab-content">
+            <!-- NUEVA PESTAÑA: REPORTES CONSOLIDADOS -->
+            <section id="tab-reportes" class="tab-content">
                 <div class="card">
-                    <h3 id="gastoFormTitle">Nuevo Gasto</h3>
-                    <form onsubmit="handleGasto(event)">
-                        <input type="number" id="gaMonto" placeholder="Monto ($)" step="0.01" required>
-                        <input type="text" id="gaDesc" placeholder="¿En qué gastaste?" required>
-                        <select id="gaCat" required></select>
-                        <select id="gaFuente" required onchange="handleGaFuenteChange(this.value)"><option value="">Selecciona la cuenta...</option></select>
-                        
-                        <div id="msiContainer" style="display:none; margin-top: 0px; margin-bottom: 15px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px dashed var(--muted);">
-                            <label style="font-size: 13px; color: var(--text); display:flex; align-items:center; gap:8px;">
-                                <input type="checkbox" id="gaIsMSI" style="width: 18px; height: 18px; margin: 0;" onchange="document.getElementById('gaMesesContainer').style.display = this.checked ? 'block' : 'none'"> Compra a Meses Sin Intereses (MSI)
-                            </label>
-                            <div id="gaMesesContainer" style="display:none; margin-top: 10px;">
-                                <input type="number" id="gaMeses" placeholder="¿A cuántos meses?" min="2" max="48" style="margin-bottom:0;">
-                            </div>
+                    <div style="display:flex; gap:10px; margin-bottom:15px; border-bottom: 1px solid var(--line); padding-bottom: 15px;">
+                        <button id="btnRepGastos" class="btn-primary" style="flex:1; background:var(--danger);" onclick="setReportMode('gastos')">Gastos</button>
+                        <button id="btnRepIngresos" class="btn-primary" style="flex:1; background:var(--muted);" onclick="setReportMode('ingresos')">Ingresos</button>
+                        <button id="btnRepMovs" class="btn-primary" style="flex:1; background:var(--muted);" onclick="setReportMode('movimientos')">Pagos</button>
+                    </div>
+                    
+                    <div id="rep-gastos-view">
+                        <input type="text" id="searchGastos" class="search-bar" placeholder="🔍 Buscar gasto o categoría..." oninput="renderListas()">
+                        <div id="listaGastos"></div>
+                        <div id="btnMasGastos" style="text-align:center; margin-top:15px; display:none;">
+                            <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('gastos')">Cargar más registros</button>
                         </div>
-
-                        <button type="submit" class="btn-primary" style="background: var(--danger);">Registrar Gasto</button>
-                    </form>
-                </div>
-                <div class="card">
-                    <h4>Historial de Gastos</h4>
-                    <input type="text" id="searchGastos" class="search-bar" placeholder="🔍 Buscar gasto o categoría..." oninput="renderListas()">
-                    <div id="listaGastos"></div>
-                    <div id="btnMasGastos" style="text-align:center; margin-top:15px; display:none;">
-                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('gastos')">Cargar más registros</button>
                     </div>
-                </div>
-            </section>
 
-            <!-- INGRESOS -->
-            <section id="tab-ingresos" class="tab-content">
-                <div class="card">
-                    <h3 id="ingresoFormTitle">Nuevo Ingreso</h3>
-                    <form onsubmit="handleIngreso(event)">
-                        <input type="number" id="inMonto" placeholder="Monto ($)" step="0.01" required>
-                        <input type="text" id="inDesc" placeholder="Concepto" required>
-                        <select id="inCuenta" required><option value="">¿A qué cuenta entró?</option></select>
-                        <button type="submit" class="btn-primary" style="background: var(--success);">Registrar Ingreso</button>
-                    </form>
-                </div>
-                <div class="card">
-                    <h4>Historial de Ingresos</h4>
-                    <input type="text" id="searchIngresos" class="search-bar" placeholder="🔍 Buscar ingreso..." oninput="renderListas()">
-                    <div id="listaIngresos"></div>
-                    <div id="btnMasIngresos" style="text-align:center; margin-top:15px; display:none;">
-                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('ingresos')">Cargar más registros</button>
+                    <div id="rep-ingresos-view" style="display:none;">
+                        <input type="text" id="searchIngresos" class="search-bar" placeholder="🔍 Buscar ingreso..." oninput="renderListas()">
+                        <div id="listaIngresos"></div>
+                        <div id="btnMasIngresos" style="text-align:center; margin-top:15px; display:none;">
+                            <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('ingresos')">Cargar más registros</button>
+                        </div>
                     </div>
-                </div>
-            </section>
 
-            <!-- TRASPASOS / PAGOS -->
-            <section id="tab-traspasos" class="tab-content">
-                <div class="card">
-                    <h3 id="movTitle">Nuevo Movimiento</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <button id="btnModoPago" type="button" class="btn-primary" style="flex:1;" onclick="setMovMode('pago')">Pagar Tarjeta</button>
-                        <button id="btnModoTras" type="button" class="btn-primary" style="flex:1; background:var(--muted);" onclick="setMovMode('traspaso')">Traspaso</button>
-                    </div>
-                    <form onsubmit="handleMovimiento(event)">
-                        <label style="font-size:12px; color:var(--muted);">Origen:</label>
-                        <select id="movOrigen" required><option value="">Cargando...</option></select>
-                        <label id="lblDestino" style="font-size:12px; color:var(--muted);">Destino:</label>
-                        <select id="movDestino" required><option value="">Cargando...</option></select>
-                        <input type="number" id="movMonto" placeholder="Monto ($)" step="0.01" required>
-                        <button type="submit" class="btn-primary">Procesar Movimiento</button>
-                    </form>
-                </div>
-                <div class="card">
-                    <h4>Historial de Movimientos</h4>
-                    <input type="text" id="searchMovs" class="search-bar" placeholder="🔍 Buscar movimiento..." oninput="renderListas()">
-                    <div id="listaMovimientos"></div>
-                    <div id="btnMasMovs" style="text-align:center; margin-top:15px; display:none;">
-                        <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('movimientos')">Cargar más registros</button>
+                    <div id="rep-movs-view" style="display:none;">
+                        <input type="text" id="searchMovs" class="search-bar" placeholder="🔍 Buscar movimiento..." oninput="renderListas()">
+                        <div id="listaMovimientos"></div>
+                        <div id="btnMasMovs" style="text-align:center; margin-top:15px; display:none;">
+                            <button class="tb-action-btn" style="color:var(--text); width:100%; border:1px solid var(--line); background:var(--surface);" onclick="loadMore('movimientos')">Cargar más registros</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -385,20 +341,17 @@
         
         <div class="fab-container" id="fabContainerMain">
             <div class="fab-menu" id="fabMenu">
-                <button class="fab-item" style="background: var(--success);" onclick="cambiarTab('ingresos', document.querySelectorAll('.nav-item')[1]); toggleFab();">📈 Ingreso</button>
-                <button class="fab-item" style="background: var(--danger);" onclick="cambiarTab('gastos', document.querySelectorAll('.nav-item')[2]); toggleFab();">📉 Gasto</button>
-                <button class="fab-item" style="background: var(--primary);" onclick="cambiarTab('traspasos', document.querySelectorAll('.nav-item')[3]); toggleFab();">💳 Pago</button>
+                <button class="fab-item" style="background: var(--success);" onclick="abrirModalRegistro('ingreso'); toggleFab();">📈 Ingreso</button>
+                <button class="fab-item" style="background: var(--danger);" onclick="abrirModalRegistro('gasto'); toggleFab();">📉 Gasto</button>
+                <button class="fab-item" style="background: var(--primary);" onclick="abrirModalRegistro('movimiento'); toggleFab();">💳 Pago</button>
             </div>
             <button class="fab-main" id="fabMain" onclick="toggleFab()">+</button>
         </div>
 
-        <nav class="nav-bar">
-            <button class="nav-item active" onclick="cambiarTab('resumen', this)"><span>🏠</span>Inicio</button>
-            <button class="nav-item" onclick="cambiarTab('ingresos', this)"><span>📈</span>Ingresos</button>
-            <button class="nav-item" onclick="cambiarTab('gastos', this)"><span>📉</span>Gastos</button>
-            <button class="nav-item" onclick="cambiarTab('traspasos', this)"><span>💳</span>Pagos</button>
-            <button class="nav-item" onclick="cambiarTab('cuentas', this)"><span>🏦</span>Cuentas</button>
-            <button class="nav-item" onclick="cambiarTab('presupuestos', this)"><span>📊</span>Límites</button>
+       <nav class="nav-bar">
+            <button class="nav-item active" onclick="cambiarTab('resumen', this)"><span>🏠</span>Resumen</button>
+            <button class="nav-item" onclick="cambiarTab('reportes', this)"><span>📋</span>Reportes</button>
+            <button class="nav-item" onclick="cambiarTab('presupuestos', this)"><span>📊</span>Presupuesto</button>
         </nav>
     </div>
 
@@ -426,6 +379,59 @@
             <div class="cm-buttons">
                 <button id="cpBtnCancel" class="cm-btn cm-btn-cancel">Cancelar</button>
                 <button id="cpBtnConfirm" class="cm-btn cm-btn-confirm">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL POPUP PARA REGISTROS NUEVOS -->
+    <div id="modalRegistroOverlay" class="custom-modal-overlay" style="display: none; align-items: flex-end; padding-bottom: 20px;">
+        <div class="custom-modal" style="width: 100%; max-width: 500px; padding: 25px 20px; text-align: left; position: relative; border-radius: 25px 25px 15px 15px; margin: 0 10px;">
+            <span onclick="cerrarModalRegistro()" style="position: absolute; right: 20px; top: 15px; font-size: 24px; cursor: pointer; color: var(--muted);">&times;</span>
+            <h3 id="modalRegTitle" style="margin-bottom: 15px;">Registro</h3>
+            
+            <!-- FORMULARIO GASTO -->
+            <div id="formGastoContainer" style="display: none;">
+                <form id="formGasto" onsubmit="handleGasto(event)">
+                    <input type="number" id="gaMonto" placeholder="Monto ($)" step="0.01" required>
+                    <input type="text" id="gaDesc" placeholder="¿En qué gastaste?" required>
+                    <select id="gaCat" required></select>
+                    <select id="gaFuente" required onchange="handleGaFuenteChange(this.value)"><option value="">Selecciona la cuenta...</option></select>
+                    <div id="msiContainer" style="display:none; margin-top: 0px; margin-bottom: 15px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px dashed var(--muted);">
+                        <label style="font-size: 13px; color: var(--text); display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="gaIsMSI" style="width: 18px; height: 18px; margin: 0;" onchange="document.getElementById('gaMesesContainer').style.display = this.checked ? 'block' : 'none'"> Compra a Meses (MSI)
+                        </label>
+                        <div id="gaMesesContainer" style="display:none; margin-top: 10px;">
+                            <input type="number" id="gaMeses" placeholder="¿A cuántos meses?" min="2" max="48" style="margin-bottom:0;">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" style="background: var(--danger);">Guardar Gasto</button>
+                </form>
+            </div>
+
+            <!-- FORMULARIO INGRESO -->
+            <div id="formIngresoContainer" style="display: none;">
+                <form id="formIngreso" onsubmit="handleIngreso(event)">
+                    <input type="number" id="inMonto" placeholder="Monto ($)" step="0.01" required>
+                    <input type="text" id="inDesc" placeholder="Concepto" required>
+                    <select id="inCuenta" required><option value="">¿A qué cuenta entró?</option></select>
+                    <button type="submit" class="btn-primary" style="background: var(--success);">Guardar Ingreso</button>
+                </form>
+            </div>
+
+            <!-- FORMULARIO PAGO/TRASPASO -->
+            <div id="formMovContainer" style="display: none;">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button id="btnModoPago" type="button" class="btn-primary" style="flex:1;" onclick="setMovMode('pago')">Pagar Tarjeta</button>
+                    <button id="btnModoTras" type="button" class="btn-primary" style="flex:1; background:var(--muted);" onclick="setMovMode('traspaso')">Traspaso</button>
+                </div>
+                <form id="formMovimiento" onsubmit="handleMovimiento(event)">
+                    <label style="font-size:12px; color:var(--muted);">Origen:</label>
+                    <select id="movOrigen" required><option value="">Cargando...</option></select>
+                    <label id="lblDestino" style="font-size:12px; color:var(--muted);">Destino:</label>
+                    <select id="movDestino" required><option value="">Cargando...</option></select>
+                    <input type="number" id="movMonto" placeholder="Monto ($)" step="0.01" required>
+                    <button type="submit" class="btn-primary">Procesar Movimiento</button>
+                </form>
             </div>
         </div>
     </div>

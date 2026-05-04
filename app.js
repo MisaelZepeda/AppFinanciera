@@ -22,6 +22,7 @@ let isPrivacyMode = false; let initialRender = true;
 // Límites de paginación para el historial
 let limits = { gastos: 15, ingresos: 15, movimientos: 15 };
 
+
 // --- FRASES MOTIVACIONALES ---
 const frasesFinancieras = [
     "Ser bueno con el dinero no significa acumularlo, sino saber cuándo dejarlo ir.",
@@ -48,6 +49,44 @@ window.addEventListener('beforeinstallprompt', (e) => {
     const btnInstall = document.getElementById('btnInstalarApp');
     if(btnInstall) btnInstall.style.display = 'block';
 });
+
+// --- LÓGICA DE INTERFAZ 2.0 (MODALES Y REPORTES) ---
+
+function abrirModalRegistro(tipo) {
+    document.getElementById('modalRegistroOverlay').style.display = 'flex';
+    document.getElementById('formGastoContainer').style.display = tipo === 'gasto' ? 'block' : 'none';
+    document.getElementById('formIngresoContainer').style.display = tipo === 'ingreso' ? 'block' : 'none';
+    document.getElementById('formMovContainer').style.display = tipo === 'movimiento' ? 'block' : 'none';
+    
+    // Si NO estamos editando, reseteamos el formulario al abrir
+    if(!currentEditId) {
+        if(document.getElementById('formGasto')) document.getElementById('formGasto').reset();
+        if(document.getElementById('formIngreso')) document.getElementById('formIngreso').reset();
+        if(document.getElementById('formMovimiento')) document.getElementById('formMovimiento').reset();
+        
+        if(tipo === 'gasto') { document.getElementById('modalRegTitle').innerText = "Nuevo Gasto"; window.handleGaFuenteChange(""); }
+        if(tipo === 'ingreso') { document.getElementById('modalRegTitle').innerText = "Nuevo Ingreso"; }
+        if(tipo === 'movimiento') { document.getElementById('modalRegTitle').innerText = "Nuevo Pago o Traspaso"; setMovMode('pago'); }
+        
+        ['inCuenta', 'gaFuente', 'movOrigen', 'movDestino'].forEach(eid => { if(document.getElementById(eid)) document.getElementById(eid).disabled = false; });
+    }
+}
+
+function cerrarModalRegistro() {
+    document.getElementById('modalRegistroOverlay').style.display = 'none';
+    currentEditId = null;
+    ['inCuenta', 'gaFuente', 'movOrigen', 'movDestino'].forEach(eid => { if(document.getElementById(eid)) document.getElementById(eid).disabled = false; });
+}
+
+function setReportMode(mode) {
+    document.getElementById('btnRepGastos').style.background = mode === 'gastos' ? 'var(--danger)' : 'var(--muted)';
+    document.getElementById('btnRepIngresos').style.background = mode === 'ingresos' ? 'var(--success)' : 'var(--muted)';
+    document.getElementById('btnRepMovs').style.background = mode === 'movimientos' ? 'var(--primary)' : 'var(--muted)';
+    
+    document.getElementById('rep-gastos-view').style.display = mode === 'gastos' ? 'block' : 'none';
+    document.getElementById('rep-ingresos-view').style.display = mode === 'ingresos' ? 'block' : 'none';
+    document.getElementById('rep-movs-view').style.display = mode === 'movimientos' ? 'block' : 'none';
+}
 
 document.getElementById('btnInstalarApp')?.addEventListener('click', async () => {
     if (!deferredPrompt) return;
@@ -449,9 +488,9 @@ function handleIngreso(e) {
     const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('inCuenta').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     updates[`transacciones/${id}`] = { desc: document.getElementById('inDesc').value, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: oldFecha }; updates[`cuentas/${c.id}/saldo`] = currentSaldo + m;
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; mostrarAlerta("Ingreso", "Registrado exitosamente.", "success"); });
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; cerrarModalRegistro(); mostrarAlerta("Ingreso", "Registrado exitosamente.", "success"); });
 }
-function editIngreso(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('ingresos'); document.getElementById('inDesc').value = t.desc; document.getElementById('inMonto').value = t.monto; document.getElementById('inCuenta').value = t.cuentaId; document.getElementById('inCuenta').disabled = true; currentEditId = fid; document.getElementById('ingresoFormTitle').innerText = "Editando Ingreso"; }
+function editIngreso(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('ingresos'); document.getElementById('inDesc').value = t.desc; document.getElementById('inMonto').value = t.monto; document.getElementById('inCuenta').value = t.cuentaId; document.getElementById('inCuenta').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Ingreso"; abrirModalRegistro('ingreso'); }
 
 function handleGasto(e) {
     e.preventDefault(); const m = parseFloat(document.getElementById('gaMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
@@ -469,28 +508,12 @@ function handleGasto(e) {
         currentEditId = null; 
         document.getElementById('gaFuente').disabled = false; 
         document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; 
-        window.handleGaFuenteChange(""); 
+        window.handleGaFuenteChange("");
+        cerrarModalRegistro(); 
         mostrarAlerta("Gasto", "Cobro descontado.", "success"); 
     });
 }
-function editGasto(fid) { 
-    const t = state.transacciones.find(x => x.firebaseId === fid); 
-    cambiarTab('gastos'); 
-    document.getElementById('gaDesc').value = t.desc; 
-    document.getElementById('gaMonto').value = t.monto; 
-    document.getElementById('gaCat').value = t.cat; 
-    document.getElementById('gaFuente').value = t.cuentaId; 
-    document.getElementById('gaFuente').disabled = true; 
-    currentEditId = fid; 
-    document.getElementById('gastoFormTitle').innerText = "Editando Gasto"; 
-
-    window.handleGaFuenteChange(t.cuentaId);
-    if (t.isMSI) {
-        document.getElementById('gaIsMSI').checked = true;
-        document.getElementById('gaMesesContainer').style.display = 'block';
-        document.getElementById('gaMeses').value = t.meses;
-    }
-}
+function editGasto(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('gastos'); document.getElementById('gaDesc').value = t.desc; document.getElementById('gaMonto').value = t.monto; document.getElementById('gaCat').value = t.cat; document.getElementById('gaFuente').value = t.cuentaId; document.getElementById('gaFuente').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Gasto"; window.handleGaFuenteChange(t.cuentaId); if (t.isMSI) { document.getElementById('gaIsMSI').checked = true; document.getElementById('gaMesesContainer').style.display = 'block'; document.getElementById('gaMeses').value = t.meses; } abrirModalRegistro('gasto'); }
 
 function setMovMode(mode) { currentMovMode = mode; document.getElementById('btnModoPago').style.background = mode === 'pago' ? 'var(--primary)' : 'var(--muted)'; document.getElementById('btnModoTras').style.background = mode === 'pago' ? 'var(--muted)' : 'var(--primary)'; document.getElementById('lblDestino').innerText = mode === 'pago' ? 'Destino (Crédito):' : 'Destino (Débito/Efectivo):'; actualizarSelects(); }
 function handleMovimiento(e) {
@@ -502,10 +525,9 @@ function handleMovimiento(e) {
     const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
     updates[`transacciones/${id}`] = { tipo: 'movimiento', subtipo: currentMovMode, monto: m, desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, origenId: or.id, destinoId: des.id, fecha: oldFecha };
     if (currentMovMode === 'pago') updates[`cuentas/${des.id}/mesPagado`] = new Date().getMonth(); 
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('movOrigen').disabled = false; document.getElementById('movDestino').disabled = false; document.getElementById('movTitle').innerText = "Nuevo Movimiento"; mostrarAlerta("Completado", "Movimiento exitoso.", "success"); });
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('movOrigen').disabled = false; document.getElementById('movDestino').disabled = false; document.getElementById('movTitle').innerText = "Nuevo Movimiento"; cerrarModalRegistro(); mostrarAlerta("Completado", "Movimiento exitoso.", "success"); });
 }
-function editMovimiento(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('traspasos'); setMovMode(t.subtipo || 'traspaso'); document.getElementById('movOrigen').value = t.origenId; document.getElementById('movDestino').value = t.destinoId; document.getElementById('movMonto').value = t.monto; document.getElementById('movOrigen').disabled = true; document.getElementById('movDestino').disabled = true; currentEditId = fid; document.getElementById('movTitle').innerText = "Editando Movimiento"; }
-
+function editMovimiento(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('movimientos'); setMovMode(t.subtipo || 'traspaso'); document.getElementById('movOrigen').value = t.origenId; document.getElementById('movDestino').value = t.destinoId; document.getElementById('movMonto').value = t.monto; document.getElementById('movOrigen').disabled = true; document.getElementById('movDestino').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Movimiento"; abrirModalRegistro('movimiento'); }
 function getBankColorsArray(banco) {
     const b = banco.toLowerCase();
     if (b.includes('nu') || b.includes('klar') || b.includes('stori')) return ['#8b5cf6', '#6d28d9'];
