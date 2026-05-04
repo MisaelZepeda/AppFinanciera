@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.misaelzepeda.twa",
+        "sha256_cert_fingerprints": ["E6:1C:01:43:A9:FD:EE:DD:41:4B:B9:6C:6F:4F:3A:20:10:F3:96:EA:56:CF:09:89:B7:53:B7:BB:FA:95:63:88"]
+      }
+    }]
