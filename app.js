@@ -262,13 +262,14 @@ function handleLogout() { auth.signOut().then(() => window.location.reload()); }
 
 auth.onAuthStateChanged(user => {
     if (user) {
-        document.getElementById('loginScreen').style.display = 'none'; document.getElementById('appDashboard').style.display = 'block';
-        if(document.getElementById('loader')) document.getElementById('loader').style.display = 'flex';
+        document.getElementById('loginScreen').style.display = 'none'; 
+        document.getElementById('appDashboard').style.display = 'block';
+        
+        // 1. Mostrar la pantalla de carga y cambiar la frase SIEMPRE
+        const loader = document.getElementById('loader');
+        if(loader) loader.style.display = 'flex';
         rotarFrase();
         
-        // --- NUEVA LÓGICA OFFLINE ---
-        
-        // 1. Función para procesar y pintar los datos (evita repetir código)
         const procesarDatos = (data) => {
             state.cuentas = data.cuentas ? Object.values(data.cuentas) : [];
             state.transacciones = data.transacciones ? Object.entries(data.transacciones).map(([id, val]) => ({...val, firebaseId: id})) : [];
@@ -284,35 +285,31 @@ auth.onAuthStateChanged(user => {
             renderCategoriasCustomConfig();
         };
 
-        // 2. CARGA RÁPIDA OFFLINE (Memoria del teléfono)
+        // 2. Cargar rápido de la memoria si existe
         const cacheLocal = localStorage.getItem(`dashpro_data_${user.uid}`);
         if (cacheLocal) {
             procesarDatos(JSON.parse(cacheLocal));
-            // Si cargó de memoria, quitamos el loader de inmediato para que la app se sienta rapidísima
-            if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none';
         }
 
-        // 3. CONEXIÓN EN TIEMPO REAL CON FIREBASE
+        // 3. Conectar a Firebase para datos frescos
         db.ref('Usuarios/' + user.uid).on('value', snap => {
             const data = snap.val() || {};
-            
-            // Guardamos un respaldo silencioso en el teléfono cada vez que hay cambios
             localStorage.setItem(`dashpro_data_${user.uid}`, JSON.stringify(data));
-            
             procesarDatos(data);
-            
-            // Si no había caché, esperamos 1.5s de la animación de carga
-            if (!cacheLocal) {
-                setTimeout(() => { if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none'; }, 1500);
-            }
         });
 
+        // 4. EL TRUCO: Forzar que el loader se quite hasta los 1.5s
+        // Así te da tiempo de leer la frase y se sincroniza con los números
+        setTimeout(() => { 
+            if(loader) loader.style.display = 'none'; 
+        }, 1500);
+
     } else {
-        document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appDashboard').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex'; 
+        document.getElementById('appDashboard').style.display = 'none';
         if(document.getElementById('loader')) document.getElementById('loader').style.display = 'none';
     }
 });
-
 function toggleUserMenu(e) { e.stopPropagation(); document.getElementById('userMenu').classList.toggle('show'); }
 function toggleFab() { const fabMain = document.getElementById('fabMain'); const fabMenu = document.getElementById('fabMenu'); fabMain.classList.toggle('active'); fabMenu.classList.toggle('show'); }
 function closeDropdowns() { document.getElementById('userMenu').classList.remove('show'); const fabMain = document.getElementById('fabMain'); const fabMenu = document.getElementById('fabMenu'); if (fabMain && fabMain.classList.contains('active')) { fabMain.classList.remove('active'); fabMenu.classList.remove('show'); } }
@@ -534,8 +531,9 @@ function renderPatrimonioChart(patrimonioActual) {
 // Lógica principal de renderizado
 function renderAll() {
     let cuentasDebito = state.cuentas.filter(c => c.tipo === 'debito' || c.tipo === 'efectivo').sort((a,b) => b.saldo - a.saldo);
-    let cuentasCredito = state.cuentas.filter(c => c.tipo === 'credito');
-    let masterCuentas = [...state.cuentas]; 
+    // Agregamos el sort para ordenar de mayor a menor adeudo (saldo)
+    let cuentasCredito = state.cuentas.filter(c => c.tipo === 'credito').sort((a,b) => b.saldo - a.saldo);
+    let masterCuentas = [...state.cuentas];
 
     let tengo = 0; let debo = 0; let capacidadCredito = 0; let gT = 0; let iT = 0; 
     const hoy = new Date(); const diaHoy = hoy.getDate(); const mesAct = hoy.getMonth(); 
@@ -556,11 +554,12 @@ function renderAll() {
         }
         let digitosHtml = c.tipo !== 'efectivo' ? `<div class="tb-digitos">**** ${c.digitos || '0000'}</div>` : "";
 
-        let clearbitUrl = `https://logo.clearbit.com/${c.banco.replace(/\s/g, '').toLowerCase()}.com`;
+       // Generador de iniciales en caso de no haber ícono
         let uiAvatarsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.banco)}&background=random&color=fff&size=128&bold=true`;
-        let finalSrc = c.icon || clearbitUrl;
+        // Si el usuario puso un link usa ese, si no, usa las iniciales directo
+        let finalSrc = c.icon || uiAvatarsUrl;
+        // Mantenemos el onerror por si un link de ícono manual que pusiste deja de funcionar
         let imgTag = `<img src="${finalSrc}" onerror="this.onerror=null; this.src='${uiAvatarsUrl}';" style="width:32px; height:32px; border-radius:50%; background:white; padding:2px; object-fit:contain;">`;
-
         let floatShareIconSVG = `<div class="tb-share-icon" onclick="generarTarjetaCompartir('${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3H6a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h4M16 17l5-5-5-5M19.8 12H9"/></svg></div>`;
         let bottomIconHTML = (isHome && c.tipo !== 'credito') ? floatShareIconSVG : '';
 
@@ -606,7 +605,6 @@ function renderAll() {
     document.getElementById('widgetDebitos').innerHTML = hDeb || "<small style='padding: 0 10px;'>Aún no agregas cuentas de débito.</small>"; 
     document.getElementById('widgetCreditos').innerHTML = hCre || "<small style='padding: 0 10px;'>Aún no agregas tarjetas de crédito.</small>"; 
     document.getElementById('listaMaestraCuentas').innerHTML = hMae;
-    
     // Asignación de Saldos Superiores (Con Animación Inicial)
     const elPatrimonio = document.getElementById('valPatrimonio');
     const elTengo = document.getElementById('valTengo');
@@ -616,13 +614,13 @@ function renderAll() {
     const patrimonio = tengo - debo; 
 
     if (initialRender) {
-        // Mantenemos los números en cero visualmente mientras la pantalla de carga está activa
+        // Mantenemos los números visualmente en cero mientras la pantalla de carga está tapando
         elPatrimonio.innerText = "$0.00";
         elTengo.innerText = "$0.00";
         elDebo.innerText = "$0.00";
         elCapacidad.innerText = "$0.00";
 
-        // Retrasamos el inicio de la animación 1500ms para que coincida con el fin de la pantalla de carga
+        // Retrasamos la animación 1500ms exactos para que inicie al quitarse el Loader
         setTimeout(() => {
             animateValue(elPatrimonio, 0, patrimonio, 1500);
             animateValue(elTengo, 0, tengo, 1500);
@@ -632,6 +630,7 @@ function renderAll() {
         
         initialRender = false;
     } else {
+        // Renderizado normal sin animar si solo estás cambiando de pestaña
         elPatrimonio.innerText = `$${patrimonio.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
         elTengo.innerText = `$${tengo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
         elDebo.innerText = `$${debo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
@@ -730,9 +729,8 @@ function renderAll() {
         });
 
         totalMensualEstimado += pagoNoIntereses;
-        let clearbitUrl = `https://logo.clearbit.com/${c.banco.replace(/\s/g, '').toLowerCase()}.com`;
         let uiAvatarsUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.banco)}&background=random&color=fff&size=128&bold=true`;
-        let finalSrc = c.icon || clearbitUrl;
+        let finalSrc = c.icon || uiAvatarsUrl;
 
         tarjetasPagoHtml += `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:var(--bg); border-radius:12px; border:1px solid var(--line);">
