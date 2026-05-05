@@ -483,22 +483,49 @@ window.handleGaFuenteChange = function(accountId) {
     }
 };
 
+// --- FUNCIONES DE GUARDADO A PRUEBA DE FALLOS ---
+
 function handleIngreso(e) {
-    e.preventDefault(); const m = parseFloat(document.getElementById('inMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
-    const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('inCuenta').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
-    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
-    updates[`transacciones/${id}`] = { desc: document.getElementById('inDesc').value, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: oldFecha }; updates[`cuentas/${c.id}/saldo`] = currentSaldo + m;
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('inCuenta').disabled = false; document.getElementById('ingresoFormTitle').innerText = "Nuevo Ingreso"; cerrarModalRegistro(); mostrarAlerta("Ingreso", "Registrado exitosamente.", "success"); });
+    e.preventDefault(); 
+    const m = parseFloat(document.getElementById('inMonto').value); 
+    let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
+    const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('inCuenta').value; 
+    const c = state.cuentas.find(x => x.id == cId); 
+    let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
+    
+    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
+    const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
+    
+    updates[`transacciones/${id}`] = { desc: document.getElementById('inDesc').value, monto: m, tipo: 'ingreso', cuentaId: c.id, fecha: oldFecha }; 
+    updates[`cuentas/${c.id}/saldo`] = currentSaldo + m;
+    
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
+        e.target.reset(); 
+        currentEditId = null; 
+        
+        // Validadores para evitar choques:
+        if(document.getElementById('inCuenta')) document.getElementById('inCuenta').disabled = false; 
+        if(document.getElementById('modalRegTitle')) document.getElementById('modalRegTitle').innerText = "Registro"; 
+        
+        cerrarModalRegistro(); 
+        mostrarAlerta("Ingreso", "Registrado exitosamente.", "success"); 
+    }).catch(err => console.error("Error al guardar: ", err));
 }
-function editIngreso(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('ingresos'); document.getElementById('inDesc').value = t.desc; document.getElementById('inMonto').value = t.monto; document.getElementById('inCuenta').value = t.cuentaId; document.getElementById('inCuenta').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Ingreso"; abrirModalRegistro('ingreso'); }
 
 function handleGasto(e) {
-    e.preventDefault(); const m = parseFloat(document.getElementById('gaMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
-    const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('gaFuente').value; const c = state.cuentas.find(x => x.id == cId); let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
-    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
+    e.preventDefault(); 
+    const m = parseFloat(document.getElementById('gaMonto').value); 
+    let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
+    const cId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).cuentaId : document.getElementById('gaFuente').value; 
+    const c = state.cuentas.find(x => x.id == cId); 
+    let currentSaldo = updates[`cuentas/${c.id}/saldo`] !== undefined ? updates[`cuentas/${c.id}/saldo`] : c.saldo;
     
-    const isMSI = document.getElementById('gaIsMSI').checked;
-    const meses = parseInt(document.getElementById('gaMeses').value) || 1;
+    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
+    const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
+    
+    // Validar si existen los inputs de meses sin intereses
+    const isMSI = document.getElementById('gaIsMSI') ? document.getElementById('gaIsMSI').checked : false;
+    const meses = document.getElementById('gaMeses') ? (parseInt(document.getElementById('gaMeses').value) || 1) : 1;
 
     updates[`transacciones/${id}`] = { desc: document.getElementById('gaDesc').value, cat: document.getElementById('gaCat').value, monto: m, tipo: 'gasto', cuentaId: c.id, fecha: oldFecha, isMSI: isMSI, meses: meses }; 
     updates[`cuentas/${c.id}/saldo`] = (c.tipo === 'debito' || c.tipo === 'efectivo') ? currentSaldo - m : currentSaldo + m;
@@ -506,27 +533,55 @@ function handleGasto(e) {
     db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
         e.target.reset(); 
         currentEditId = null; 
-        document.getElementById('gaFuente').disabled = false; 
-        document.getElementById('gastoFormTitle').innerText = "Nuevo Gasto"; 
-        window.handleGaFuenteChange("");
+        
+        // Validadores para evitar choques:
+        if(document.getElementById('gaFuente')) document.getElementById('gaFuente').disabled = false; 
+        if(document.getElementById('modalRegTitle')) document.getElementById('modalRegTitle').innerText = "Registro"; 
+        if(typeof window.handleGaFuenteChange === 'function') window.handleGaFuenteChange("");
+        
         cerrarModalRegistro(); 
         mostrarAlerta("Gasto", "Cobro descontado.", "success"); 
-    });
+    }).catch(err => console.error("Error al guardar: ", err));
 }
+
+function handleMovimiento(e) {
+    e.preventDefault(); 
+    const m = parseFloat(document.getElementById('movMonto').value); 
+    let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
+    const orId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).origenId : document.getElementById('movOrigen').value; 
+    const desId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).destinoId : document.getElementById('movDestino').value;
+    const or = state.cuentas.find(x => x.id == orId); 
+    const des = state.cuentas.find(x => x.id == desId);
+    
+    let sOr = updates[`cuentas/${or.id}/saldo`] !== undefined ? updates[`cuentas/${or.id}/saldo`] : or.saldo; 
+    let sDes = updates[`cuentas/${des.id}/saldo`] !== undefined ? updates[`cuentas/${des.id}/saldo`] : des.saldo;
+    
+    updates[`cuentas/${or.id}/saldo`] = sOr - m; 
+    updates[`cuentas/${des.id}/saldo`] = (des.tipo === 'debito' || des.tipo === 'efectivo') ? sDes + m : sDes - m;
+    
+    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; 
+    const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
+    
+    updates[`transacciones/${id}`] = { tipo: 'movimiento', subtipo: currentMovMode, monto: m, desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, origenId: or.id, destinoId: des.id, fecha: oldFecha };
+    if (currentMovMode === 'pago') updates[`cuentas/${des.id}/mesPagado`] = new Date().getMonth(); 
+    
+    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { 
+        e.target.reset(); 
+        currentEditId = null; 
+        
+        // Validadores para evitar choques:
+        if(document.getElementById('movOrigen')) document.getElementById('movOrigen').disabled = false; 
+        if(document.getElementById('movDestino')) document.getElementById('movDestino').disabled = false; 
+        if(document.getElementById('modalRegTitle')) document.getElementById('modalRegTitle').innerText = "Registro"; 
+        
+        cerrarModalRegistro(); 
+        mostrarAlerta("Completado", "Movimiento exitoso.", "success"); 
+    }).catch(err => console.error("Error al guardar: ", err));
+}
+function editIngreso(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('ingresos'); document.getElementById('inDesc').value = t.desc; document.getElementById('inMonto').value = t.monto; document.getElementById('inCuenta').value = t.cuentaId; document.getElementById('inCuenta').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Ingreso"; abrirModalRegistro('ingreso'); }
 function editGasto(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('gastos'); document.getElementById('gaDesc').value = t.desc; document.getElementById('gaMonto').value = t.monto; document.getElementById('gaCat').value = t.cat; document.getElementById('gaFuente').value = t.cuentaId; document.getElementById('gaFuente').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Gasto"; window.handleGaFuenteChange(t.cuentaId); if (t.isMSI) { document.getElementById('gaIsMSI').checked = true; document.getElementById('gaMesesContainer').style.display = 'block'; document.getElementById('gaMeses').value = t.meses; } abrirModalRegistro('gasto'); }
 
 function setMovMode(mode) { currentMovMode = mode; document.getElementById('btnModoPago').style.background = mode === 'pago' ? 'var(--primary)' : 'var(--muted)'; document.getElementById('btnModoTras').style.background = mode === 'pago' ? 'var(--muted)' : 'var(--primary)'; document.getElementById('lblDestino').innerText = mode === 'pago' ? 'Destino (Crédito):' : 'Destino (Débito/Efectivo):'; actualizarSelects(); }
-function handleMovimiento(e) {
-    e.preventDefault(); const m = parseFloat(document.getElementById('movMonto').value); let updates = currentEditId ? revertirTransaccion(currentEditId) : {};
-    const orId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).origenId : document.getElementById('movOrigen').value; const desId = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).destinoId : document.getElementById('movDestino').value;
-    const or = state.cuentas.find(x => x.id == orId); const des = state.cuentas.find(x => x.id == desId);
-    let sOr = updates[`cuentas/${or.id}/saldo`] !== undefined ? updates[`cuentas/${or.id}/saldo`] : or.saldo; let sDes = updates[`cuentas/${des.id}/saldo`] !== undefined ? updates[`cuentas/${des.id}/saldo`] : des.saldo;
-    updates[`cuentas/${or.id}/saldo`] = sOr - m; updates[`cuentas/${des.id}/saldo`] = (des.tipo === 'debito' || des.tipo === 'efectivo') ? sDes + m : sDes - m;
-    const id = currentEditId || db.ref(`Usuarios/${auth.currentUser.uid}/transacciones`).push().key; const oldFecha = currentEditId ? state.transacciones.find(x => x.firebaseId === currentEditId).fecha : new Date().toISOString().split('T')[0];
-    updates[`transacciones/${id}`] = { tipo: 'movimiento', subtipo: currentMovMode, monto: m, desc: currentMovMode === 'pago' ? `Pago a ${des.nombre}` : `Traspaso a ${des.nombre}`, origenId: or.id, destinoId: des.id, fecha: oldFecha };
-    if (currentMovMode === 'pago') updates[`cuentas/${des.id}/mesPagado`] = new Date().getMonth(); 
-    db.ref(`Usuarios/${auth.currentUser.uid}`).update(updates).then(() => { e.target.reset(); currentEditId = null; document.getElementById('movOrigen').disabled = false; document.getElementById('movDestino').disabled = false; document.getElementById('movTitle').innerText = "Nuevo Movimiento"; cerrarModalRegistro(); mostrarAlerta("Completado", "Movimiento exitoso.", "success"); });
-}
 function editMovimiento(fid) { const t = state.transacciones.find(x => x.firebaseId === fid); cambiarTab('reportes'); setReportMode('movimientos'); setMovMode(t.subtipo || 'traspaso'); document.getElementById('movOrigen').value = t.origenId; document.getElementById('movDestino').value = t.destinoId; document.getElementById('movMonto').value = t.monto; document.getElementById('movOrigen').disabled = true; document.getElementById('movDestino').disabled = true; currentEditId = fid; document.getElementById('modalRegTitle').innerText = "Editando Movimiento"; abrirModalRegistro('movimiento'); }
 function getBankColorsArray(banco) {
     const b = banco.toLowerCase();
